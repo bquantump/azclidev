@@ -3,24 +3,46 @@ import sys
 import subprocess
 
 if __name__ == "__main__":
+    # this will parse command line arguments to trigger the correct funtions to be called
+    # For example, if setup -r path is passed in, the setupConfig(path)
     pass
 
-def setupUpConfig(pathToCliExtensionRepo):
+def setupConfig(pathToCliExtensionRepo):
+    # this will setup up the CLI extension that that az will use the cli
+    # extenison in the current virual enviroment
+    # It should: 
+    # validate virtual env exist
+    # copy over .azure/config if it exist in user global .azure dir
+    # make .azure/config if it does not exist
+    # customize the .ps1 and .bat activation scripts to setup
+    # the needed env vars
+    
     # first cut, need to check if dirs already exist and files already
     # exist. Parse those files to see if things are already setup etc
     if not os.environ.get('VIRTUAL_ENV'):
         raise RuntimeError("you are not running inside a virtual enviromet or VIRTUAL_ENV is not set")
-    os.environ["AZURE_CONFIG_DIR"] = os.environ.get('VIRTUAL_ENV')
-    with open(os.environ["AZURE_CONFIG_DIR"] + "config", "w+") as file:
+    path = os.path.join(os.environ.get('VIRTUAL_ENV'), '.azure')
+    os.mkdir(path)
+    with open(path + "config", "w+") as file:
         file.write("[extension]\n")
         file.write("dev_sources = " + pathToCliExtensionRepo)
     
+    # write set env var in env activation scripts, .ps1
+    
 
 def setupTestEnv():
+    # this will setup pytest for CLI extension to run 
+    # in a clean enviroment. It will allow the user to customize
+    # pytest commands or use a default set of pytest commands
+    # it will also clean up the test enviroment unless the user specifies 
+    # otherwise
+    
+    
     if not os.environ.get("AZURE_CONFIG_DIR"):
         raise RuntimeError("AZURE_CONFIG_DIR env var is not set. Please rerun setup")
     with open(os.environ["AZURE_CONFIG_DIR"] + "config", "r") as file:
         content = file.read()
+        content = content.split()
         if not "[extension]" in content:
             raise RuntimeError("the extensions dir is not setup correctly. Please rerun setup")
         indexOfExtensions = content.index("[extension]")
@@ -31,19 +53,21 @@ def setupTestEnv():
                               " try running setup again with a valid extensions dir")
         os.environ["AZURE_EXTENSION_DIR"] = content[indexOfExtensions + 1]
 
+
 def runTest(testToRun, live, pytestargs):
-   if live:
+    if live: 
        os.environ[ENV_VAR_TEST_LIVE] = 'True'
-   if pytestargs == "--default":
+    if pytestargs == "--default":
        arguments = ['-p', 'no:warnings', '--no-print-logs']
        arguments += ['-n', 'auto']
-   else:
-       pytestargs = pytestargs.split()
-       if "io" in pytestargs:
-           if pytestargs[pytestargs.index('io') + 1].lower() == 'true':
-               arguments.append('-s')
-             
-   cmd = 'python -m pytest {}'.format(' '.join(arguments))
-   subprocess.call(cmd.split(), shell=True)
+    else:
+        for i in pytestargs:
+           arguments += pytestargs[i].split()
+
+    for i in testToRun: #['logic', 'portal']
+        arguments
+        cmd = 'python -m pytest {}'.format(' '.join(arguments))
+        subprocess.call(cmd.split(), env=os.environ.copy(), shell=True)
+        # clean up all test stuff
    
   
