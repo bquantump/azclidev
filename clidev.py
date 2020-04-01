@@ -1,6 +1,8 @@
 import os
 import sys
 import subprocess
+import constants
+from shutil import copyfile
 
 if __name__ == "__main__":
     # this will parse command line arguments to trigger the correct funtions to be called
@@ -23,9 +25,22 @@ def setupConfig(pathToCliExtensionRepo):
         raise RuntimeError("you are not running inside a virtual enviromet or VIRTUAL_ENV is not set")
     path = os.path.join(os.environ.get('VIRTUAL_ENV'), '.azure')
     os.mkdir(path)
-    with open(path + "config", "w+") as file:
-        file.write("[extension]\n")
-        file.write("dev_sources = " + pathToCliExtensionRepo)
+    if os.path.isfile(os.path.expanduser(os.path.join('~', '.azure')) + 
+                      constants.CONFIG_NAME):
+        copyfile(os.path.expanduser(os.path.join('~', '.azure')) + 
+                 constants.CONFIG_NAME, path)
+    content = open(path + constants.CONFIG_NAME, "r+").readline()
+    file = open(path + constants.CONFIG_NAME, "w")
+    if constants.EXTENSION_TAG not in content:
+        content += [constants.CONFIG_NAME, "dev_sources = " + pathToCliExtensionRepo + "\n"]
+        file.writelines(content)
+    else:
+        content[content.index(constants.CONFIG_NAME) + 1] = "dev_sources = " + pathToCliExtensionRepo + "\n"
+        file.writelines(content)
+    file.close()
+    
+            
+            
     
     # write set env var in env activation scripts, .ps1
     
