@@ -2,12 +2,7 @@ import os
 import sys
 import subprocess
 import constants
-from shutil import copyfile
-
-if __name__ == "__main__":
-    # this will parse command line arguments to trigger the correct funtions to be called
-    # For example, if setup -r path is passed in, the setupConfig(path)
-    pass
+import shutil
 
 def setupConfig(pathToCliExtensionRepo):
     # this will setup up the CLI extension that that az will use the cli
@@ -21,29 +16,43 @@ def setupConfig(pathToCliExtensionRepo):
     
     # first cut, need to check if dirs already exist and files already
     # exist. Parse those files to see if things are already setup etc
-    if not os.environ.get('VIRTUAL_ENV'):
+    if not os.environ.get(constants.VIRTUAL_ENV):
         raise RuntimeError("you are not running inside a virtual enviromet or VIRTUAL_ENV is not set")
-    path = os.path.join(os.environ.get('VIRTUAL_ENV'), '.azure')
-    os.mkdir(path)
-    if os.path.isfile(os.path.expanduser(os.path.join('~', '.azure')) + 
-                      constants.CONFIG_NAME):
-        copyfile(os.path.expanduser(os.path.join('~', '.azure')) + 
-                 constants.CONFIG_NAME, path)
-    content = open(path + constants.CONFIG_NAME, "r+").readline()
-    file = open(path + constants.CONFIG_NAME, "w")
+    azureConfigPath = os.path.join(os.environ.get(constants.VIRTUAL_ENV), '.azure')
+
+    if not os.path.isdir(azureConfigPath):
+        os.mkdir(azureConfigPath)
+    globalAzConfig = os.path.join(os.path.expanduser(os.path.join('~', '.azure')), 
+                                   constants.CONFIG_NAME)
+    if os.path.isfile(os.path.join(globalAzConfig)):
+        shutil.copyfile(globalAzConfig, os.path.join(azureConfigPath, 'config'))
+    else:
+       # if this case is hit az cli is probaly not installed
+       pass
+    os.path.join(azureConfigPath, constants.CONFIG_NAME)
+    content = open(os.path.join(azureConfigPath, constants.CONFIG_NAME), "r").readlines()
+    file = open(azureConfigPath + constants.CONFIG_NAME, "w")
     if constants.EXTENSION_TAG not in content:
         content += [constants.CONFIG_NAME, "dev_sources = " + pathToCliExtensionRepo + "\n"]
         file.writelines(content)
     else:
-        content[content.index(constants.CONFIG_NAME) + 1] = "dev_sources = " + pathToCliExtensionRepo + "\n"
+        content[content.index(constants.EXTENSION_TAG) + 1] = "dev_sources = " + \
+                                                               pathToCliExtensionRepo + "\n"
         file.writelines(content)
     file.close()
-    
-            
-            
-    
-    # write set env var in env activation scripts, .ps1
-    
+    acitvate_path = os.path.join(os.environ.get(constants.VIRTUAL_ENV), 
+                                 constants.SCRIPTS, constants.ACTIVATE_PS)
+    content = open(acitvate_path, "r").read()   
+    idx = content.find(constants.PS1_VENV_SET)
+    if idx < 0: 
+        raise RuntimeError("hmm, it looks like " + constants.ACTIVATE_PS + " does"
+                           " not set the virutal enviroment variable VIRTUAL_ENV")
+    content = content[:idx] + "$env:AZURE_CONFIG_DIR = " + \
+                            "\"" + azureConfigPath + "\"; "  + content[idx:]
+    file = open(acitvate_path, 'w')
+    file.write(content)
+    file.close()
+        
 
 def setupTestEnv():
     # this will setup pytest for CLI extension to run 
@@ -86,3 +95,9 @@ def runTest(testToRun, live, pytestargs):
         # clean up all test stuff
    
   
+if __name__ == "__main__":
+    # this will parse command line arguments to trigger the correct funtions to be called
+    # For example, if setup -r path is passed in, the setupConfig(path)
+    
+    # TEST ONLY FOR NOW
+    setupConfig("C:\\Users\\stevens\Projects\\test\\git\\azure-cli-extensions")

@@ -1,2 +1,6 @@
 EXTENSION_TAG = '[extension]\n'
 CONFIG_NAME = 'config'
+ACTIVATE_PS = 'Activate.ps1'
+PS1_VENV_SET = '$env:VIRTUAL_ENV'
+SCRIPTS = 'Scripts'
+VIRTUAL_ENV = 'VIRTUAL_ENV'
