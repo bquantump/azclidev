@@ -17,7 +17,7 @@ def setupConfig(pathToCliExtensionRepo):
     # first cut, need to check if dirs already exist and files already
     # exist. Parse those files to see if things are already setup etc
     if not os.environ.get(constants.VIRTUAL_ENV):
-        raise RuntimeError("you are not running inside a virtual enviromet or VIRTUAL_ENV is not set")
+        raise RuntimeError("You are not running inside a virtual enviromet or VIRTUAL_ENV is not set")
     azureConfigPath = os.path.join(os.environ.get(constants.VIRTUAL_ENV), '.azure')
 
     if not os.path.isdir(azureConfigPath):
@@ -52,7 +52,12 @@ def setupConfig(pathToCliExtensionRepo):
     file = open(acitvate_path, 'w')
     file.write(content)
     file.close()
-        
+    
+    print("\n========================================================")
+    print("Initial setup was successful. Please rerun the virtual " +
+          "environment activation script (either activate or activate.ps1) " +
+          "to complete the setup. Note, in future console windows you only need to run " + 
+          "the activate script and not setup again.")
 
 def setupTestEnv():
     # this will setup pytest for CLI extension to run 
