@@ -3,6 +3,7 @@ import sys
 import subprocess
 import constants
 import shutil
+import argparse
 
 def setupConfig(pathToCliExtensionRepo):
     # this will setup up the CLI extension that that az will use the cli
@@ -99,10 +100,32 @@ def runTest(testToRun, live, pytestargs):
         subprocess.call(cmd.split(), env=os.environ.copy(), shell=True)
         # clean up all test stuff
    
-  
+def set_env(args):
+    print("setup whoot!")
+
+def run_test(args):
+    print("run test whoot!")
+    
 if __name__ == "__main__":
     # this will parse command line arguments to trigger the correct funtions to be called
     # For example, if setup -r path is passed in, the setupConfig(path)
     
-    # TEST ONLY FOR NOW
-    setupConfig("C:\\Users\\stevens\Projects\\test\\git\\azure-cli-extensions")
+    parser = argparse.ArgumentParser(prog='clidev')
+    subparsers = parser.add_subparsers(title='subcommands',
+                                       description='valid subcommands',
+                                       help='additional help')
+
+    parserSetup = subparsers.add_parser('setup',aliases=['s'], help='setup help')
+    parserSetup.add_argument("path", type=str, help="Path to cli-extensions repo")
+    parserSetup.add_argument('--set-evn', type=bool, help="Will " +
+                             "creat a virtual enviroment with the given evn name")
+    parserSetup.set_defaults(func=setupConfig)
+
+    # create the parser for the "b" command
+    parserTest = subparsers.add_parser('test', aliases=['t'],help='test help')
+    parserTest.add_argument('--pyt-options', choices='XYZ', help='baz help')
+    parserTest.set_defaults(func=run_test)
+    args = parser.parse_args()
+    args.func(args)
+    
+    #setupConfig("C:\\Users\\stevens\Projects\\test\\git\\azure-cli-extensions")
