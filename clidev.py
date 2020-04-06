@@ -68,9 +68,9 @@ def setupConfig(args):
     print("The setup was successful. Please run or re-run the virtual\n" +
           "environment activation script (either activate or activate.ps1)\n" +
           "to complete the setup. Note, in future console windows you only\n" +
-           "need to run the activate script and not setup again.")
+          "need to run the activate script and not setup again.")
 
-def setupTestEnv():
+def setupTestEnv(args):
     # this will setup pytest for CLI extension to run 
     # in a clean enviroment. It will allow the user to customize
     # pytest commands or use a default set of pytest commands
@@ -78,20 +78,21 @@ def setupTestEnv():
     # otherwise
     
     
-    if not os.environ.get("AZURE_CONFIG_DIR"):
+    if not os.environ.get(constants.AZ_CONFIG_DIR):
         raise RuntimeError("AZURE_CONFIG_DIR env var is not set. Please rerun setup")
-    with open(os.environ["AZURE_CONFIG_DIR"] + "config", "r") as file:
+    with open(os.path.join(os.environ[constants.AZ_CONFIG_DIR], "config"), "r") as file:
         content = file.read()
         content = content.split()
         if not "[extension]" in content:
             raise RuntimeError("the extensions dir is not setup correctly. Please rerun setup")
         indexOfExtensions = content.index("[extension]")
-        if not indexOfExtensions or len(content) <= indexOfExtensions + 1:
+        if indexOfExtensions < 0 or len(content) <= indexOfExtensions + 1:
             raise RuntimeError("the extensions dir is not setup correctly. Please rerun setup")
         if not os.path(content[indexOfExtensions + 1]):
             raise RuntimeError("the path to the cli extensions does not exist"
                               " try running setup again with a valid extensions dir")
         os.environ["AZURE_EXTENSION_DIR"] = content[indexOfExtensions + 1]
+    
 
 
 def runTest(testToRun, live, pytestargs):
@@ -118,18 +119,24 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers(title='subcommands',
                                        description='valid subcommands',
                                        help='additional help')
-
+    # setup parser
     parserSetup = subparsers.add_parser('setup',aliases=['s'], help='setup help')
     parserSetup.add_argument("path", type=str, help="Path to cli-extensions repo")
     parserSetup.add_argument('-s','--set-evn', type=str, help="Will " +
                              "creat a virtual enviroment with the given evn name")
     parserSetup.set_defaults(func=setupConfig)
 
-    # create the parser for the "b" command
+    # test parse
     parserTest = subparsers.add_parser('test', aliases=['t'],help='test help')
-    parserTest.add_argument('--pyt-options', choices='XYZ', help='baz help')
+    parserTest.add_argument('--options', nargs='+', help="list of pytest options, " +
+                            "if empty will use defaults options")
+    parserTest.add_argument('--live', action='store_true', help='Run test live')  
+    group = parserTest.add_mutually_exclusive_group(required=True)
+    group.add_argument('--all', action='store_true', help='Run all cli-extensions tests')  
+    group.add_argument('-t','--test', nargs='+', help='List of test to run')
     parserTest.set_defaults(func=setupTestEnv)
     args = parser.parse_args()
+    print("\nargs are " + str(args))
     args.func(args)
     
     #setupConfig("C:\\Users\\stevens\Projects\\test\\git\\azure-cli-extensions")
