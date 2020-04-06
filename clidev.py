@@ -5,7 +5,7 @@ import constants
 import shutil
 import argparse
 
-def setupConfig(pathToCliExtensionRepo):
+def setupConfig(args):
     # this will setup up the CLI extension that that az will use the cli
     # extenison in the current virual enviroment
     # It should: 
@@ -17,22 +17,31 @@ def setupConfig(pathToCliExtensionRepo):
     
     # first cut, need to check if dirs already exist and files already
     # exist. Parse those files to see if things are already setup etc
-    if not os.environ.get(constants.VIRTUAL_ENV):
-        raise RuntimeError("You are not running inside a virtual enviromet or VIRTUAL_ENV is not set")
-    azureConfigPath = os.path.join(os.environ.get(constants.VIRTUAL_ENV), '.azure')
-
-    if not os.path.isdir(azureConfigPath):
-        os.mkdir(azureConfigPath)
+    pathToCliExtensionRepo = args.path
+    if args.set_evn:
+       subprocess.call(constants.VENV_CMD + args.set_evn, 
+                       shell=True) # windows only for now
+       azureConfigPath = os.path.join(os.path.abspath(os.getcwd()),
+                                       args.set_evn)
+    elif not os.environ.get(constants.VIRTUAL_ENV):
+        raise RuntimeError("You are not running inside a virtual enviromet and have not specfied "
+                           "to create one")
+        azureConfigPath = os.environ.get(constants.VIRTUAL_ENV)
+    dotAzureConfig = os.path.join(azureConfigPath, '.azure')
+    if not os.path.isdir(dotAzureConfig):
+        os.mkdir(dotAzureConfig)
     globalAzConfig = os.path.join(os.path.expanduser(os.path.join('~', '.azure')), 
                                    constants.CONFIG_NAME)
+    config = os.path.join(dotAzureConfig, constants.CONFIG_NAME)
     if os.path.isfile(os.path.join(globalAzConfig)):
-        shutil.copyfile(globalAzConfig, os.path.join(azureConfigPath, 'config'))
+        shutil.copyfile(globalAzConfig, os.path.join(dotAzureConfig, 'config'))
     else:
-       # if this case is hit az cli is probaly not installed
-       pass
-    os.path.join(azureConfigPath, constants.CONFIG_NAME)
-    content = open(os.path.join(azureConfigPath, constants.CONFIG_NAME), "r").readlines()
-    file = open(azureConfigPath + constants.CONFIG_NAME, "w")
+        # create empty config file
+        file = open(config, "w")
+        file.close()
+
+    content = open(config, "r").readlines()
+    file = open(config, "w")
     if constants.EXTENSION_TAG not in content:
         content += [constants.CONFIG_NAME, "dev_sources = " + pathToCliExtensionRepo + "\n"]
         file.writelines(content)
@@ -41,24 +50,25 @@ def setupConfig(pathToCliExtensionRepo):
                                                                pathToCliExtensionRepo + "\n"
         file.writelines(content)
     file.close()
-    acitvate_path = os.path.join(os.environ.get(constants.VIRTUAL_ENV), 
-                                 constants.SCRIPTS, constants.ACTIVATE_PS)
-    content = open(acitvate_path, "r").read()   
+    activatePath= os.path.join(azureConfigPath, constants.SCRIPTS,
+                              constants.ACTIVATE_PS)
+    content = open(activatePath, "r").read()   
     idx = content.find(constants.PS1_VENV_SET)
     if idx < 0: 
         raise RuntimeError("hmm, it looks like " + constants.ACTIVATE_PS + " does"
                            " not set the virutal enviroment variable VIRTUAL_ENV")
     content = content[:idx] + "$env:AZURE_CONFIG_DIR = " + \
-                            "\"" + azureConfigPath + "\"; "  + content[idx:]
-    file = open(acitvate_path, 'w')
+                            "\"" + dotAzureConfig + "\"; "  + \
+                            content[idx:]
+    file = open(activatePath, 'w')
     file.write(content)
     file.close()
     
-    print("\n========================================================")
-    print("Initial setup was successful. Please rerun the virtual " +
-          "environment activation script (either activate or activate.ps1) " +
-          "to complete the setup. Note, in future console windows you only need to run " + 
-          "the activate script and not setup again.")
+    print("\n======================================================================")
+    print("The setup was successful. Please run or re-run the virtual\n" +
+          "environment activation script (either activate or activate.ps1)\n" +
+          "to complete the setup. Note, in future console windows you only\n" +
+           "need to run the activate script and not setup again.")
 
 def setupTestEnv():
     # this will setup pytest for CLI extension to run 
@@ -99,12 +109,6 @@ def runTest(testToRun, live, pytestargs):
         cmd = 'python -m pytest {}'.format(' '.join(arguments))
         subprocess.call(cmd.split(), env=os.environ.copy(), shell=True)
         # clean up all test stuff
-   
-def set_env(args):
-    print("setup whoot!")
-
-def run_test(args):
-    print("run test whoot!")
     
 if __name__ == "__main__":
     # this will parse command line arguments to trigger the correct funtions to be called
@@ -117,14 +121,14 @@ if __name__ == "__main__":
 
     parserSetup = subparsers.add_parser('setup',aliases=['s'], help='setup help')
     parserSetup.add_argument("path", type=str, help="Path to cli-extensions repo")
-    parserSetup.add_argument('--set-evn', type=bool, help="Will " +
+    parserSetup.add_argument('-s','--set-evn', type=str, help="Will " +
                              "creat a virtual enviroment with the given evn name")
     parserSetup.set_defaults(func=setupConfig)
 
     # create the parser for the "b" command
     parserTest = subparsers.add_parser('test', aliases=['t'],help='test help')
     parserTest.add_argument('--pyt-options', choices='XYZ', help='baz help')
-    parserTest.set_defaults(func=run_test)
+    parserTest.set_defaults(func=setupTestEnv)
     args = parser.parse_args()
     args.func(args)
     
