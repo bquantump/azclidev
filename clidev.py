@@ -110,7 +110,7 @@ def runTest(testToRun, live, testArgs, all):
            else:
                arguments.append(i)
     baseExtensionsPath = os.path.join(os.environ["AZURE_EXTENSION_DIR"], 'src')
-    for i in testToRun: #['logic', 'portal']
+    for i in testToRun:
         testPath = os.path.join(baseExtensionsPath, i)
         cmd = 'python -m pytest {}'.format(' '.join([testPath] + arguments))
         print("cmd is: " + str(cmd))
@@ -157,7 +157,5 @@ if __name__ == "__main__":
     group.add_argument('-t','--test', nargs='+', help='List of test to run')
     parserTest.set_defaults(func=setupTestEnv)
     args = parser.parse_args()
-    print("\nargs are " + str(args))
     args.func(args)
     
-    #setupConfig("C:\\Users\\stevens\Projects\\test\\git\\azure-cli-extensions")
