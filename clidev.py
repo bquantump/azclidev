@@ -23,10 +23,12 @@ def setupConfig(args):
                        shell=True) # windows only for now
        azureConfigPath = os.path.join(os.path.abspath(os.getcwd()),
                                        args.set_evn)
-    elif not os.environ.get(constants.VIRTUAL_ENV):
+    elif os.environ.get(constants.VIRTUAL_ENV):
+        azureConfigPath = os.environ.get(constants.VIRTUAL_ENV)
+    else:
         raise RuntimeError("You are not running inside a virtual enviromet and have not specfied "
                            "to create one")
-        azureConfigPath = os.environ.get(constants.VIRTUAL_ENV)
+        
     dotAzureConfig = os.path.join(azureConfigPath, '.azure')
     if not os.path.isdir(dotAzureConfig):
         os.mkdir(dotAzureConfig)
@@ -50,6 +52,8 @@ def setupConfig(args):
                                                                pathToCliExtensionRepo + "\n"
         file.writelines(content)
     file.close()
+    
+    # only for powershell for now
     activatePath= os.path.join(azureConfigPath, constants.SCRIPTS,
                               constants.ACTIVATE_PS)
     content = open(activatePath, "r").read()   
@@ -67,8 +71,9 @@ def setupConfig(args):
     print("\n======================================================================")
     print("The setup was successful. Please run or re-run the virtual\n" +
           "environment activation script (either activate or activate.ps1)\n" +
-          "to complete the setup. Note, in future console windows you only\n" +
+          "Note, in future console windows you only\n" +
           "need to run the activate script and not setup again.")
+    print("======================================================================\n")
 
 def setupTestEnv(args):
     # this will setup pytest for CLI extension to run 
@@ -77,40 +82,56 @@ def setupTestEnv(args):
     # it will also clean up the test enviroment unless the user specifies 
     # otherwise
     
-    
+    if not os.environ.get(constants.VIRTUAL_ENV):
+        raise RuntimeError("You are not running inside a virtual enviromet")
     if not os.environ.get(constants.AZ_CONFIG_DIR):
         raise RuntimeError("AZURE_CONFIG_DIR env var is not set. Please rerun setup")
     with open(os.path.join(os.environ[constants.AZ_CONFIG_DIR], "config"), "r") as file:
         content = file.read()
         content = content.split()
-        if not "[extension]" in content:
-            raise RuntimeError("the extensions dir is not setup correctly. Please rerun setup")
-        indexOfExtensions = content.index("[extension]")
-        if indexOfExtensions < 0 or len(content) <= indexOfExtensions + 1:
-            raise RuntimeError("the extensions dir is not setup correctly. Please rerun setup")
-        if not os.path(content[indexOfExtensions + 1]):
-            raise RuntimeError("the path to the cli extensions does not exist"
-                              " try running setup again with a valid extensions dir")
-        os.environ["AZURE_EXTENSION_DIR"] = content[indexOfExtensions + 1]
+        os.environ["AZURE_EXTENSION_DIR"] = validateConfig(content)
+        print("config extensions are at : " + str(os.environ["AZURE_EXTENSION_DIR"]))
+        runTest(args.test, args.live, args.options, args.all)
     
 
 
-def runTest(testToRun, live, pytestargs):
+def runTest(testToRun, live, testArgs, all):
     if live: 
-       os.environ[ENV_VAR_TEST_LIVE] = 'True'
-    if pytestargs == "--default":
-       arguments = ['-p', 'no:warnings', '--no-print-logs']
-       arguments += ['-n', 'auto']
+       os.environ['AZURE_TEST_RUN_LIVE'] = 'True'
+    if not testArgs:
+       arguments = ['-p', 'no:warnings']
     else:
-        for i in pytestargs:
-           arguments += pytestargs[i].split()
-
+        arguments = []
+        for i in testArgs:
+           if i[0] != '-':
+               if not arguments:
+                   raise RuntimeError("invalid pytest argument " + str(i))
+               arguments[-1] += " " + i
+           else:
+               arguments.append(i)
+    baseExtensionsPath = os.path.join(os.environ["AZURE_EXTENSION_DIR"], 'src')
     for i in testToRun: #['logic', 'portal']
-        arguments
-        cmd = 'python -m pytest {}'.format(' '.join(arguments))
+        testPath = os.path.join(baseExtensionsPath, i)
+        cmd = 'python -m pytest {}'.format(' '.join([testPath] + arguments))
+        print("cmd is: " + str(cmd))
         subprocess.call(cmd.split(), env=os.environ.copy(), shell=True)
         # clean up all test stuff
     
+def validateConfig(content):
+    indexOfExtensions = content.index("[extension]")
+    if (indexOfExtensions < 0 or len(content) <= indexOfExtensions + 2 or 
+        content[indexOfExtensions + 1] != constants.AZ_DEV_SRC or
+        content[indexOfExtensions + 2] != '='):
+        print(content[indexOfExtensions + 0])
+        print(content[indexOfExtensions + 1])
+        print(content[indexOfExtensions + 2])
+        raise RuntimeError("the extensions dir is not setup correctly. Please rerun setup")
+    if not os.path.isdir(content[indexOfExtensions + 3]):
+        raise RuntimeError("the path to the cli extensions does not exist"
+                        " try running setup again with a valid extensions dir")
+    return content[indexOfExtensions + 3]
+    
+        
 if __name__ == "__main__":
     # this will parse command line arguments to trigger the correct funtions to be called
     # For example, if setup -r path is passed in, the setupConfig(path)
