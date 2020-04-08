@@ -6,17 +6,7 @@ import shutil
 import argparse
 
 def setupConfig(args):
-    # this will setup up the CLI extension that that az will use the cli
-    # extenison in the current virual enviroment
-    # It should: 
-    # validate virtual env exist
-    # copy over .azure/config if it exist in user global .azure dir
-    # make .azure/config if it does not exist
-    # customize the .ps1 and .bat activation scripts to setup
-    # the needed env vars
-    
-    # first cut, need to check if dirs already exist and files already
-    # exist. Parse those files to see if things are already setup etc
+
     pathToCliExtensionRepo = args.path
     if args.set_evn:
        subprocess.call(constants.VENV_CMD + args.set_evn, 
@@ -44,13 +34,14 @@ def setupConfig(args):
 
     content = open(config, "r").readlines()
     file = open(config, "w")
+    if constants.CLOUD_TAG not in content:
+        content += [constants.CLOUD_TAG, "name = " + constants.AZ_CLOUD + "\n"]
     if constants.EXTENSION_TAG not in content:
         content += [constants.CONFIG_NAME, "dev_sources = " + pathToCliExtensionRepo + "\n"]
-        file.writelines(content)
     else:
         content[content.index(constants.EXTENSION_TAG) + 1] = "dev_sources = " + \
                                                                pathToCliExtensionRepo + "\n"
-        file.writelines(content)
+    file.writelines(content)
     file.close()
     
     # only for powershell for now
@@ -60,10 +51,11 @@ def setupConfig(args):
     idx = content.find(constants.PS1_VENV_SET)
     if idx < 0: 
         raise RuntimeError("hmm, it looks like " + constants.ACTIVATE_PS + " does"
-                           " not set the virutal enviroment variable VIRTUAL_ENV")
-    content = content[:idx] + "$env:AZURE_CONFIG_DIR = " + \
-                            "\"" + dotAzureConfig + "\"; "  + \
-                            content[idx:]
+                         " not set the virutal enviroment variable VIRTUAL_ENV")
+    if content.find(constants.EVN_AZ_CONFIG) < 0:
+        content = content[:idx] + constants.EVN_AZ_CONFIG + " = " + \
+                                "\"" + dotAzureConfig + "\"; "  + \
+                                content[idx:]
     file = open(activatePath, 'w')
     file.write(content)
     file.close()
@@ -90,14 +82,16 @@ def setupTestEnv(args):
         content = file.read()
         content = content.split()
         os.environ["AZURE_EXTENSION_DIR"] = validateConfig(content)
-        print("config extensions are at : " + str(os.environ["AZURE_EXTENSION_DIR"]))
-        runTest(args.test, args.live, args.options, args.all)
+        runTest(args.test, args.live, args.options, args.all, args.no_clean)
+        
+        
     
 
 
-def runTest(testToRun, live, testArgs, all):
+def runTest(testToRun, live, testArgs, all, noClean):
     if live: 
        os.environ['AZURE_TEST_RUN_LIVE'] = 'True'
+       
     if not testArgs:
        arguments = ['-p', 'no:warnings']
     else:
@@ -115,16 +109,17 @@ def runTest(testToRun, live, testArgs, all):
         cmd = 'python -m pytest {}'.format(' '.join([testPath] + arguments))
         print("cmd is: " + str(cmd))
         subprocess.call(cmd.split(), env=os.environ.copy(), shell=True)
-        # clean up all test stuff
+        if not noClean:
+            cache = os.path.join(testPath, 
+                                 constants.AZEX_PREFIX,
+                                 'tests',
+                                 'latest')
     
 def validateConfig(content):
     indexOfExtensions = content.index("[extension]")
     if (indexOfExtensions < 0 or len(content) <= indexOfExtensions + 2 or 
         content[indexOfExtensions + 1] != constants.AZ_DEV_SRC or
         content[indexOfExtensions + 2] != '='):
-        print(content[indexOfExtensions + 0])
-        print(content[indexOfExtensions + 1])
-        print(content[indexOfExtensions + 2])
         raise RuntimeError("the extensions dir is not setup correctly. Please rerun setup")
     if not os.path.isdir(content[indexOfExtensions + 3]):
         raise RuntimeError("the path to the cli extensions does not exist"
@@ -153,7 +148,8 @@ if __name__ == "__main__":
                             "if empty will use defaults options")
     parserTest.add_argument('--live', action='store_true', help='Run test live')  
     group = parserTest.add_mutually_exclusive_group(required=True)
-    group.add_argument('--all', action='store_true', help='Run all cli-extensions tests')  
+    group.add_argument('--all', action='store_true', help='Run all cli-extensions tests')
+    group.add_argument('--no-clean', action='store_true', help='Will neither clean up cache nor recordings')  
     group.add_argument('-t','--test', nargs='+', help='List of test to run')
     parserTest.set_defaults(func=setupTestEnv)
     args = parser.parse_args()
