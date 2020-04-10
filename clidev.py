@@ -89,7 +89,7 @@ def runTest(testToRun, live, testArgs, all, noClean):
     if live: 
        os.environ['AZURE_TEST_RUN_LIVE'] = 'True'
     if not noClean:
-        os.environ['PYTHONDONTWRITEBYTECODE '] = 1
+        os.environ['PYTHONDONTWRITEBYTECODE '] = '1'
        
     if not testArgs:
        arguments = ['-p', 'no:warnings']
