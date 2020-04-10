@@ -114,7 +114,8 @@ def runTest(testToRun, live, testArgs, all, noClean):
                                                 'test',
                                                 'latest',
                                                 'recordings'))
-            [os.remove(file) for file in recordings if file.endswith(".yml")]
+            if os.path.isdir(recordings):
+                [os.remove(file) for file in recordings if file.endswith(".yml")]
             
             
     
