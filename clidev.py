@@ -87,10 +87,8 @@ def setupTestEnv(args):
 
 def runTest(testToRun, live, testArgs, all, noClean):
     if live: 
-       os.environ['AZURE_TEST_RUN_LIVE'] = 'True'
-    if not noClean:
-        os.environ['PYTHONDONTWRITEBYTECODE '] = '1'
-       
+        os.environ['AZURE_TEST_RUN_LIVE'] = 'True'
+        
     if not testArgs:
        arguments = ['-p', 'no:warnings']
     else:
@@ -105,17 +103,19 @@ def runTest(testToRun, live, testArgs, all, noClean):
     baseExtensionsPath = os.path.join(os.environ["AZURE_EXTENSION_DIR"], 'src')
     for i in testToRun:
         testPath = os.path.join(baseExtensionsPath, i)
-        cmd = 'python -m pytest {}'.format(' '.join([testPath] + arguments))
+        cmd = ("python " + ('-B ' if not noClean else '') + "-m pytest {}").format(' '.join([testPath] + arguments))
         print("cmd is: " + str(cmd))
         subprocess.call(cmd.split(), env=os.environ.copy(), shell=True)
         if not live and not noClean:
-            recordings = os.listdir(os.path.join(testPath, 
-                                                constants.AZEX_PREFIX + i,
-                                                'test',
-                                                'latest',
-                                                'recordings'))
+            recordings = os.path.join(testPath, 
+                                     constants.AZEX_PREFIX + i,
+                                     'tests',
+                                     'latest',
+                                     'recordings')
+            print("records path is: " + str(recordings))
             if os.path.isdir(recordings):
-                [os.remove(file) for file in recordings if file.endswith(".yml")]
+                recordingFiles = os.listdir(recordings)
+                [os.remove(os.path.join(recordings, file)) for file in recordingFiles if file.endswith(".yaml")]
             
             
     
