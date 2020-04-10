@@ -84,13 +84,12 @@ def setupTestEnv(args):
         os.environ["AZURE_EXTENSION_DIR"] = validateConfig(content)
         runTest(args.test, args.live, args.options, args.all, args.no_clean)
         
-        
-    
-
 
 def runTest(testToRun, live, testArgs, all, noClean):
     if live: 
        os.environ['AZURE_TEST_RUN_LIVE'] = 'True'
+    if not noClean:
+        os.environ['PYTHONDONTWRITEBYTECODE '] = 1
        
     if not testArgs:
        arguments = ['-p', 'no:warnings']
@@ -109,11 +108,15 @@ def runTest(testToRun, live, testArgs, all, noClean):
         cmd = 'python -m pytest {}'.format(' '.join([testPath] + arguments))
         print("cmd is: " + str(cmd))
         subprocess.call(cmd.split(), env=os.environ.copy(), shell=True)
-        if not noClean:
-            cache = os.path.join(testPath, 
-                                 constants.AZEX_PREFIX,
-                                 'tests',
-                                 'latest')
+        if not live and not noClean:
+            recordings = os.listdir(os.path.join(testPath, 
+                                                constants.AZEX_PREFIX + i,
+                                                'test',
+                                                'latest',
+                                                'recordings'))
+            [os.remove(file) for file in recordings if file.endswith(".yml")]
+            
+            
     
 def validateConfig(content):
     indexOfExtensions = content.index("[extension]")
@@ -152,6 +155,9 @@ if __name__ == "__main__":
     group.add_argument('--no-clean', action='store_true', help='Will neither clean up cache nor recordings')  
     group.add_argument('-t','--test', nargs='+', help='List of test to run')
     parserTest.set_defaults(func=setupTestEnv)
+    
     args = parser.parse_args()
     args.func(args)
+
+    
     
