@@ -20,15 +20,15 @@ def setupConfig(args):
                            "to create one")
         
     dotAzureConfig = os.path.join(azureConfigPath, '.azure')
-    if not os.path.isdir(dotAzureConfig):
-        os.mkdir(dotAzureConfig)
-    globalAzConfig = os.path.join(os.path.expanduser(os.path.join('~', '.azure')), 
-                                   constants.CONFIG_NAME)
+    if os.path.isdir(dotAzureConfig):
+        shutil.rmtree(dotAzureConfig)
+    globalAzConfig = os.path.expanduser(os.path.join('~', '.azure'))
     config = os.path.join(dotAzureConfig, constants.CONFIG_NAME)
-    if os.path.isfile(os.path.join(globalAzConfig)):
-        shutil.copyfile(globalAzConfig, os.path.join(dotAzureConfig, 'config'))
+    if os.path.isdir(os.path.join(globalAzConfig)) and args.copy:
+        print("\ncopying " + str(globalAzConfig) + " to " + str(dotAzureConfig))
+        shutil.copytree(globalAzConfig, dotAzureConfig)
     else:
-        # create empty config file
+        os.mkdir(dotAzureConfig)
         file = open(config, "w")
         file.close()
 
@@ -37,7 +37,7 @@ def setupConfig(args):
     if constants.CLOUD_TAG not in content:
         content += [constants.CLOUD_TAG, "name = " + constants.AZ_CLOUD + "\n"]
     if constants.EXTENSION_TAG not in content:
-        content += [constants.CONFIG_NAME, "dev_sources = " + pathToCliExtensionRepo + "\n"]
+        content += [constants.EXTENSION_TAG, "dev_sources = " + pathToCliExtensionRepo + "\n"]
     else:
         content[content.index(constants.EXTENSION_TAG) + 1] = "dev_sources = " + \
                                                                pathToCliExtensionRepo + "\n"
@@ -85,21 +85,13 @@ def setupTestEnv(args):
         runTest(args.test, args.live, args.options, args.all, args.no_clean)
         
 
-def runTest(testToRun, live, testArgs, all, noClean):
+def runTest(testToRun, live, pyArgs, all, noClean):
+    #print("\ntest args are " + str(pyArgs.split()))
     if live: 
         os.environ['AZURE_TEST_RUN_LIVE'] = 'True'
-        
-    if not testArgs:
-       arguments = ['-p', 'no:warnings']
-    else:
-        arguments = []
-        for i in testArgs:
-           if i[0] != '-':
-               if not arguments:
-                   raise RuntimeError("invalid pytest argument " + str(i))
-               arguments[-1] += " " + i
-           else:
-               arguments.append(i)
+    arguments = ['-p', 'no:warnings'] if not pyArgs else pyArgs
+    print(arguments[0] + arguments[-1])
+    arguments = arguments[1:-1].split() if (arguments[0] + arguments[-1] == '[]') else arguments   
     baseExtensionsPath = os.path.join(os.environ["AZURE_EXTENSION_DIR"], 'src')
     for i in testToRun:
         testPath = os.path.join(baseExtensionsPath, i)
@@ -143,17 +135,20 @@ if __name__ == "__main__":
     parserSetup = subparsers.add_parser('setup',aliases=['s'], help='setup help')
     parserSetup.add_argument("path", type=str, help="Path to cli-extensions repo")
     parserSetup.add_argument('-s','--set-evn', type=str, help="Will " +
-                             "creat a virtual enviroment with the given evn name")
+                             "create a virtual enviroment with the given evn name")
+    parserSetup.add_argument('-c', '--copy', action='store_true', help="copy entire global" +
+                             " .azure diretory to the newly create" +
+                             " if it exist")
     parserSetup.set_defaults(func=setupConfig)
 
     # test parse
     parserTest = subparsers.add_parser('test', aliases=['t'],help='test help')
-    parserTest.add_argument('--options', nargs='+', help="list of pytest options, " +
-                            "if empty will use defaults options")
+    parserTest.add_argument('--options',type=str, help="A string represention of pytest args surrounded by \"[]\"." +
+                            " Example: --options \"[-s -l --tb=auto]\"")
     parserTest.add_argument('--live', action='store_true', help='Run test live')  
+    parserTest.add_argument('--no-clean', action='store_true', help='Will neither clean up cache nor recordings')  
     group = parserTest.add_mutually_exclusive_group(required=True)
     group.add_argument('--all', action='store_true', help='Run all cli-extensions tests')
-    group.add_argument('--no-clean', action='store_true', help='Will neither clean up cache nor recordings')  
     group.add_argument('-t','--test', nargs='+', help='List of test to run')
     parserTest.set_defaults(func=setupTestEnv)
     
