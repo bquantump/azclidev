@@ -106,7 +106,7 @@ def runTest(testToRun, live, pyArgs, all, clean):
         testPath = os.path.join(baseExtensionsPath, i)
         cmd = ("python " + ('-B ' if clean else '') +
                "-m pytest {}").format(' '.join([testPath] + arguments))
-        print("cmd is: " + str(cmd))
+        print("cmd being run is: " + str(cmd))
         subprocess.call(cmd.split(), env=os.environ.copy(), shell=True)
         if not live and clean:
             recordings = os.path.join(testPath,
@@ -114,7 +114,6 @@ def runTest(testToRun, live, pyArgs, all, clean):
                                       'tests',
                                       'latest',
                                       'recordings')
-            print("records path is: " + str(recordings))
             if os.path.isdir(recordings):
                 recordingFiles = os.listdir(recordings)
                 [os.remove(os.path.join(recordings, file))
@@ -135,7 +134,7 @@ if __name__ == "__main__":
     parserSetup.add_argument('-s', '--set-evn', type=str, help="Will " +
                              "create a virtual enviroment with the given evn name")
     parserSetup.add_argument('-c', '--copy', action='store_true', help="copy entire global" +
-                             " .azure diretory to the newly created virtual enviromen .azure direcotry" +
+                             " .azure diretory to the newly created virtual enviroment .azure direcotry" +
                              " if it exist")
     parserSetup.set_defaults(func=setupConfig)
 
