@@ -4,6 +4,7 @@ import subprocess
 import constants
 import shutil
 import argparse
+import utils
 
 def setupConfig(args):
 
@@ -81,7 +82,7 @@ def setupTestEnv(args):
     with open(os.path.join(os.environ[constants.AZ_CONFIG_DIR], "config"), "r") as file:
         content = file.read()
         content = content.split()
-        os.environ["AZURE_EXTENSION_DIR"] = validateConfig(content)
+        os.environ["AZURE_EXTENSION_DIR"] = utils.validateConfig(content)
         runTest(args.test, args.live, args.options, args.all, args.no_clean)
         
 
@@ -90,9 +91,12 @@ def runTest(testToRun, live, pyArgs, all, noClean):
     if live: 
         os.environ['AZURE_TEST_RUN_LIVE'] = 'True'
     arguments = ['-p', 'no:warnings'] if not pyArgs else pyArgs
-    print(arguments[0] + arguments[-1])
     arguments = arguments[1:-1].split() if (arguments[0] + arguments[-1] == '[]') else arguments   
     baseExtensionsPath = os.path.join(os.environ["AZURE_EXTENSION_DIR"], 'src')
+    
+    # Change dir to root of extension so all test that use files pass 
+    # All test should use path from the root for their test files
+    os.chdir(os.environ["AZURE_EXTENSION_DIR"])
     for i in testToRun:
         testPath = os.path.join(baseExtensionsPath, i)
         cmd = ("python " + ('-B ' if not noClean else '') + "-m pytest {}").format(' '.join([testPath] + arguments))
@@ -109,23 +113,9 @@ def runTest(testToRun, live, pyArgs, all, noClean):
                 recordingFiles = os.listdir(recordings)
                 [os.remove(os.path.join(recordings, file)) for file in recordingFiles if file.endswith(".yaml")]
             
-            
-    
-def validateConfig(content):
-    indexOfExtensions = content.index("[extension]")
-    if (indexOfExtensions < 0 or len(content) <= indexOfExtensions + 2 or 
-        content[indexOfExtensions + 1] != constants.AZ_DEV_SRC or
-        content[indexOfExtensions + 2] != '='):
-        raise RuntimeError("the extensions dir is not setup correctly. Please rerun setup")
-    if not os.path.isdir(content[indexOfExtensions + 3]):
-        raise RuntimeError("the path to the cli extensions does not exist"
-                        " try running setup again with a valid extensions dir")
-    return content[indexOfExtensions + 3]
     
         
 if __name__ == "__main__":
-    # this will parse command line arguments to trigger the correct funtions to be called
-    # For example, if setup -r path is passed in, the setupConfig(path)
     
     parser = argparse.ArgumentParser(prog='clidev')
     subparsers = parser.add_subparsers(title='subcommands',
