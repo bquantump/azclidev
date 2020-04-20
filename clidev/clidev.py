@@ -1,22 +1,22 @@
 import os
 import sys
 import subprocess
-import constants
 import shutil
 import argparse
-import utils
+from clidev import utils
+import clidev as cli
 
 
 def setupConfig(args):
 
     pathToCliExtensionRepo = args.path
     if args.set_evn:
-        subprocess.call(constants.VENV_CMD + args.set_evn,
+        subprocess.call(cli.VENV_CMD + args.set_evn,
                         shell=True)  # windows only for now
         azureConfigPath = os.path.join(os.path.abspath(os.getcwd()),
                                        args.set_evn)
-    elif os.environ.get(constants.VIRTUAL_ENV):
-        azureConfigPath = os.environ.get(constants.VIRTUAL_ENV)
+    elif os.environ.get(cli.VIRTUAL_ENV):
+        azureConfigPath = os.environ.get(cli.VIRTUAL_ENV)
     else:
         raise RuntimeError("You are not running inside a virtual enviromet and have not specfied "
                            "to create one")
@@ -25,7 +25,7 @@ def setupConfig(args):
     if os.path.isdir(dotAzureConfig):
         shutil.rmtree(dotAzureConfig)
     globalAzConfig = os.path.expanduser(os.path.join('~', '.azure'))
-    config = os.path.join(dotAzureConfig, constants.CONFIG_NAME)
+    config = os.path.join(dotAzureConfig, cli.CONFIG_NAME)
     if os.path.isdir(os.path.join(globalAzConfig)) and args.copy:
         print("\ncopying " + str(globalAzConfig) + " to " + str(dotAzureConfig))
         shutil.copytree(globalAzConfig, dotAzureConfig)
@@ -36,27 +36,27 @@ def setupConfig(args):
 
     content = open(config, "r").readlines()
     file = open(config, "w")
-    if constants.CLOUD_TAG not in content:
-        content += [constants.CLOUD_TAG, "name = " + constants.AZ_CLOUD + "\n"]
-    if constants.EXTENSION_TAG not in content:
-        content += [constants.EXTENSION_TAG,
+    if cli.CLOUD_TAG not in content:
+        content += [cli.CLOUD_TAG, "name = " + cli.AZ_CLOUD + "\n"]
+    if cli.EXTENSION_TAG not in content:
+        content += [cli.EXTENSION_TAG,
                     "dev_sources = " + pathToCliExtensionRepo + "\n"]
     else:
-        content[content.index(constants.EXTENSION_TAG) + 1] = "dev_sources = " + \
+        content[content.index(cli.EXTENSION_TAG) + 1] = "dev_sources = " + \
             pathToCliExtensionRepo + "\n"
     file.writelines(content)
     file.close()
 
     # only for powershell for now
-    activatePath = os.path.join(azureConfigPath, constants.SCRIPTS,
-                                constants.ACTIVATE_PS)
+    activatePath = os.path.join(azureConfigPath, cli.SCRIPTS,
+                                cli.ACTIVATE_PS)
     content = open(activatePath, "r").read()
-    idx = content.find(constants.PS1_VENV_SET)
+    idx = content.find(cli.PS1_VENV_SET)
     if idx < 0:
-        raise RuntimeError("hmm, it looks like " + constants.ACTIVATE_PS + " does"
+        raise RuntimeError("hmm, it looks like " + cli.ACTIVATE_PS + " does"
                            " not set the virutal enviroment variable VIRTUAL_ENV")
-    if content.find(constants.EVN_AZ_CONFIG) < 0:
-        content = content[:idx] + constants.EVN_AZ_CONFIG + " = " + \
+    if content.find(cli.EVN_AZ_CONFIG) < 0:
+        content = content[:idx] + cli.EVN_AZ_CONFIG + " = " + \
             "\"" + dotAzureConfig + "\"; " + \
             content[idx:]
     file = open(activatePath, 'w')
@@ -78,12 +78,15 @@ def setupTestEnv(args):
     # it will also clean up the test enviroment unless the user specifies
     # otherwise
 
-    if not os.environ.get(constants.VIRTUAL_ENV):
+    if not os.environ.get(cli.VIRTUAL_ENV):
         raise RuntimeError("You are not running inside a virtual enviromet")
-    if not os.environ.get(constants.AZ_CONFIG_DIR):
+    if not os.environ.get(cli.AZ_CONFIG_DIR):
         raise RuntimeError(
             "AZURE_CONFIG_DIR env var is not set. Please rerun setup")
-    with open(os.path.join(os.environ[constants.AZ_CONFIG_DIR], "config"), "r") as file:
+    if not os.path.exists(os.path.join(os.environ[cli.AZ_CONFIG_DIR], "config")):
+        raise RuntimeError(
+            "The Azure config file does not exist. please rerun setup")
+    with open(os.path.join(os.environ[cli.AZ_CONFIG_DIR], "config"), "r") as file:
         content = file.read()
         content = content.split()
         os.environ["AZURE_EXTENSION_DIR"] = utils.validateConfig(content)
@@ -110,7 +113,7 @@ def runTest(testToRun, live, pyArgs, all, clean):
         subprocess.call(cmd.split(), env=os.environ.copy(), shell=True)
         if not live and clean:
             recordings = os.path.join(testPath,
-                                      constants.AZEX_PREFIX + i,
+                                      cli.AZEX_PREFIX + i,
                                       'tests',
                                       'latest',
                                       'recordings')
@@ -119,9 +122,7 @@ def runTest(testToRun, live, pyArgs, all, clean):
                 [os.remove(os.path.join(recordings, file))
                  for file in recordingFiles if file.endswith(".yaml")]
 
-
-if __name__ == "__main__":
-
+def main():
     parser = argparse.ArgumentParser(prog='clidev')
     subparsers = parser.add_subparsers(title='subcommands',
                                        description='valid subcommands',
@@ -153,4 +154,10 @@ if __name__ == "__main__":
     parserTest.set_defaults(func=setupTestEnv)
 
     args = parser.parse_args()
+    if not vars(args):
+        parser.print_usage()
+        sys.exit(1)
     args.func(args)
+    
+if __name__ == "__main__":
+    main()

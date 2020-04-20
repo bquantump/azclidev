@@ -1,4 +1,4 @@
-from constants import AZ_DEV_SRC
+from clidev.constants import AZ_DEV_SRC
 import os
 
 def validateConfig(content):
