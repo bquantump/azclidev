@@ -77,20 +77,9 @@ def setupTestEnv(args):
     # pytest commands or use a default set of pytest commands
     # it will also clean up the test enviroment unless the user specifies
     # otherwise
-
-    if not os.environ.get(cli.VIRTUAL_ENV):
-        raise RuntimeError("You are not running inside a virtual enviromet")
-    if not os.environ.get(cli.AZ_CONFIG_DIR):
-        raise RuntimeError(
-            "AZURE_CONFIG_DIR env var is not set. Please rerun setup")
-    if not os.path.exists(os.path.join(os.environ[cli.AZ_CONFIG_DIR], "config")):
-        raise RuntimeError(
-            "The Azure config file does not exist. please rerun setup")
-    with open(os.path.join(os.environ[cli.AZ_CONFIG_DIR], "config"), "r") as file:
-        content = file.read()
-        content = content.split()
-        os.environ["AZURE_EXTENSION_DIR"] = utils.validateConfig(content)
-        runTest(args.test, args.live, args.options, args.all, args.clean)
+    utils.validateEnv()
+    utils.setConfig()
+    runTest(args.test, args.live, args.options, args.all, args.clean)
 
 
 def runTest(testToRun, live, pyArgs, all, clean):
@@ -122,6 +111,20 @@ def runTest(testToRun, live, pyArgs, all, clean):
                 [os.remove(os.path.join(recordings, file))
                  for file in recordingFiles if file.endswith(".yaml")]
 
+
+def addExtension(args):
+    utils.validateEnv()
+    utils.setConfig()
+    extensionsPath = os.path.join(
+        os.environ["AZURE_EXTENSION_DIR"], 'src', args.extension_name)
+    print("here extension is " + str(extensionsPath))
+    if os.path.isdir(extensionsPath):
+        os.chdir(extensionsPath)
+        subprocess.call(cli.INSTALL_EXT_CMD, shell=True)
+    else:
+        raise RuntimeError(args.extension_name + " doest not exist")
+
+
 def main():
     parser = argparse.ArgumentParser(prog='clidev')
     subparsers = parser.add_subparsers(title='subcommands',
@@ -132,6 +135,8 @@ def main():
         'setup', aliases=['s'], help='setup help')
     parserSetup.add_argument(
         "path", type=str, help="Path to cli-extensions repo")
+    parserSetup.add_argument('-cli', '--cli-path',
+                             type=str, help="Path to cli repo")
     parserSetup.add_argument('-s', '--set-evn', type=str, help="Will " +
                              "create a virtual enviroment with the given evn name")
     parserSetup.add_argument('-c', '--copy', action='store_true', help="copy entire global" +
@@ -139,7 +144,7 @@ def main():
                              " if it exist")
     parserSetup.set_defaults(func=setupConfig)
 
-    # test parse
+    # test parser
     parserTest = subparsers.add_parser('test', aliases=['t'], help='test help')
     parserTest.add_argument('--options', type=str, help="A string represention of pytest args surrounded by \"[]\"." +
                             " Example: --options \"[-s -l --tb=auto]\"")
@@ -152,12 +157,20 @@ def main():
                        help='Run all cli-extensions tests')
     group.add_argument('-t', '--test', nargs='+', help='List of test to run')
     parserTest.set_defaults(func=setupTestEnv)
-
+    
+    # add extension parser
+    parserExtensions = subparsers.add_parser(
+        'add', aliases=['t'], help='add an extensions')
+    parserExtensions.add_argument(
+        "extension_name", type=str, help="Extension name")
+    parserExtensions.set_defaults(func=addExtension)
+    
     args = parser.parse_args()
     if not vars(args):
         parser.print_usage()
         sys.exit(1)
     args.func(args)
-    
+
+
 if __name__ == "__main__":
     main()
