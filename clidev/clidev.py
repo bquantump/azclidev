@@ -29,10 +29,13 @@ def setupConfig(args):
     if os.path.isdir(os.path.join(globalAzConfig)) and args.copy:
         print("\ncopying " + str(globalAzConfig) + " to " + str(dotAzureConfig))
         shutil.copytree(globalAzConfig, dotAzureConfig)
-    else:
+    elif not args.use_global:
         os.mkdir(dotAzureConfig)
         file = open(config, "w")
         file.close()
+    else:
+        dotAzureConfig = globalAzConfig
+        config = os.path.join(dotAzureConfig, cli.CONFIG_NAME)
 
     content = open(config, "r").readlines()
     file = open(config, "w")
@@ -139,9 +142,12 @@ def main():
                              type=str, help="Path to cli repo")
     parserSetup.add_argument('-s', '--set-evn', type=str, help="Will " +
                              "create a virtual enviroment with the given evn name")
-    parserSetup.add_argument('-c', '--copy', action='store_true', help="copy entire global" +
+    parserSubGroup = parserSetup.add_mutually_exclusive_group(required=True)
+    parserSubGroup.add_argument('-c', '--copy', action='store_true', help="copy entire global" +
                              " .azure diretory to the newly created virtual enviroment .azure direcotry" +
                              " if it exist")
+    parserSubGroup.add_argument('-g', '--use-global', action='store_true',
+                             help="will use the default global system .azure config")
     parserSetup.set_defaults(func=setupConfig)
 
     # test parser
@@ -157,14 +163,14 @@ def main():
                        help='Run all cli-extensions tests')
     group.add_argument('-t', '--test', nargs='+', help='List of test to run')
     parserTest.set_defaults(func=setupTestEnv)
-    
+
     # add extension parser
     parserExtensions = subparsers.add_parser(
         'add', aliases=['t'], help='add an extensions')
     parserExtensions.add_argument(
         "extension_name", type=str, help="Extension name")
     parserExtensions.set_defaults(func=addExtension)
-    
+
     args = parser.parse_args()
     if not vars(args):
         parser.print_usage()
