@@ -4,65 +4,64 @@ import subprocess
 import shutil
 import argparse
 from clidev import utils
+from clidev.config import Config
 import clidev as cli
 
 
 def setupConfig(args):
 
-    pathToCliExtensionRepo = args.path
     if args.set_evn:
         subprocess.call(cli.VENV_CMD + args.set_evn,
                         shell=True)  # windows only for now
-        azureConfigPath = os.path.join(os.path.abspath(os.getcwd()),
-                                       args.set_evn)
+        azure_config_path = os.path.join(os.path.abspath(os.getcwd()),
+                                         args.set_evn)
     elif os.environ.get(cli.VIRTUAL_ENV):
-        azureConfigPath = os.environ.get(cli.VIRTUAL_ENV)
+        azure_config_path = os.environ.get(cli.VIRTUAL_ENV)
     else:
         raise RuntimeError("You are not running inside a virtual enviromet and have not specfied "
                            "to create one")
 
-    dotAzureConfig = os.path.join(azureConfigPath, '.azure')
-    if os.path.isdir(dotAzureConfig):
-        shutil.rmtree(dotAzureConfig)
-    globalAzConfig = os.path.expanduser(os.path.join('~', '.azure'))
-    config = os.path.join(dotAzureConfig, cli.CONFIG_NAME)
-    if os.path.isdir(os.path.join(globalAzConfig)) and args.copy:
-        print("\ncopying " + str(globalAzConfig) + " to " + str(dotAzureConfig))
-        shutil.copytree(globalAzConfig, dotAzureConfig)
+    dot_azure_config = os.path.join(azure_config_path, '.azure')
+    if os.path.isdir(dot_azure_config):
+        shutil.rmtree(dot_azure_config)
+    global_az_config = os.path.expanduser(os.path.join('~', '.azure'))
+    config_path = os.path.join(dot_azure_config, cli.CONFIG_NAME)
+    if os.path.isdir(global_az_config) and args.copy:
+        shutil.copytree(global_az_config, dot_azure_config)
     elif not args.use_global:
-        os.mkdir(dotAzureConfig)
-        file = open(config, "w")
+        os.mkdir(dot_azure_config)
+        file = open(config_path, "w")
         file.close()
+    elif os.path.isdir(global_az_config):
+        dot_azure_config = global_az_config
+        config_path = os.path.join(dot_azure_config, cli.CONFIG_NAME)
     else:
-        dotAzureConfig = globalAzConfig
-        config = os.path.join(dotAzureConfig, cli.CONFIG_NAME)
+        raise RuntimeError(
+            "Global AZ config is not set up, yet it was specified to be used.")
 
-    content = open(config, "r").readlines()
-    file = open(config, "w")
-    if cli.CLOUD_TAG not in content:
-        content += [cli.CLOUD_TAG, "name = " + cli.AZ_CLOUD + "\n"]
-    if cli.EXTENSION_TAG not in content:
-        content += [cli.EXTENSION_TAG,
-                    "dev_sources = " + pathToCliExtensionRepo + "\n"]
-    else:
-        content[content.index(cli.EXTENSION_TAG) + 1] = "dev_sources = " + \
-            pathToCliExtensionRepo + "\n"
-    file.writelines(content)
-    file.close()
+    config = Config(config_path)
+    if cli.CLOUD_SECTION not in config:
+        config[cli.CLOUD_SECTION] = cli.AZ_CLOUD
+    path_to_cli_extension_repo = os.path.abspath(args.path)
+    config[cli.EXT_SECTION] = {cli.AZ_DEV_SRC: path_to_cli_extension_repo}
+    if args.cli_path:
+        config[cli.CLI_SECTION] = {
+            cli.AZ_DEV_SRC: os.path.abspath(args.cli_path)}
+    config.write()
 
     # only for powershell for now
-    activatePath = os.path.join(azureConfigPath, cli.SCRIPTS,
-                                cli.ACTIVATE_PS)
-    content = open(activatePath, "r").read()
+    activate_path = os.path.join(azure_config_path, cli.SCRIPTS,
+                                 cli.ACTIVATE_PS)
+    content = open(activate_path, "r").read()
     idx = content.find(cli.PS1_VENV_SET)
     if idx < 0:
         raise RuntimeError("hmm, it looks like " + cli.ACTIVATE_PS + " does"
                            " not set the virutal enviroment variable VIRTUAL_ENV")
     if content.find(cli.EVN_AZ_CONFIG) < 0:
         content = content[:idx] + cli.EVN_AZ_CONFIG + " = " + \
-            "\"" + dotAzureConfig + "\"; " + \
+            "\"" + dot_azure_config + "\"; " + \
             content[idx:]
-    file = open(activatePath, 'w')
+    file = open(activate_path, 'w')
     file.write(content)
     file.close()
 
@@ -81,24 +80,29 @@ def setupTestEnv(args):
     # it will also clean up the test enviroment unless the user specifies
     # otherwise
     utils.validateEnv()
-    utils.setConfig()
-    runTest(args.test, args.live, args.options, args.all, args.clean)
+    config = Config(os.path.join(
+        os.environ[cli.AZ_CONFIG_DIR], "config"))
+    if cli.EXT_SECTION not in config or cli.AZ_DEV_SRC not in config[cli.EXT_SECTION]:
+        raise RuntimeError(
+            "no extension section or dev_sources specified in the config")
+    runTest(args.test, args.live, args.options, args.all, args.clean, config)
 
 
-def runTest(testToRun, live, pyArgs, all, clean):
+def runTest(test_to_run, live, py_args, all, clean, config):
 
     if live:
         os.environ['AZURE_TEST_RUN_LIVE'] = 'True'
-    arguments = ['-p', 'no:warnings'] if not pyArgs else pyArgs
+    arguments = ['-p', 'no:warnings'] if not py_args else py_args
     arguments = arguments[1:-1].split() if (arguments[0] +
                                             arguments[-1] == '[]') else arguments
-    baseExtensionsPath = os.path.join(os.environ["AZURE_EXTENSION_DIR"], 'src')
+    base_extensions_path = os.path.join(
+        config[cli.EXT_SECTION][cli.AZ_DEV_SRC], 'src')
 
     # Change dir to root of extension so all test that use files pass
     # All test should use path from the root for their test files
-    os.chdir(os.environ["AZURE_EXTENSION_DIR"])
-    for i in testToRun:
-        testPath = os.path.join(baseExtensionsPath, i)
+    os.chdir(config[cli.EXT_SECTION][cli.AZ_DEV_SRC])
+    for i in test_to_run:
+        testPath = os.path.join(base_extensions_path, i)
         cmd = ("python " + ('-B ' if clean else '') +
                "-m pytest {}").format(' '.join([testPath] + arguments))
         print("cmd being run is: " + str(cmd))
@@ -110,19 +114,20 @@ def runTest(testToRun, live, pyArgs, all, clean):
                                       'latest',
                                       'recordings')
             if os.path.isdir(recordings):
-                recordingFiles = os.listdir(recordings)
+                recording_files = os.listdir(recordings)
                 [os.remove(os.path.join(recordings, file))
-                 for file in recordingFiles if file.endswith(".yaml")]
+                 for file in recording_files if file.endswith(".yaml")]
 
 
 def addExtension(args):
     utils.validateEnv()
-    utils.setConfig()
-    extensionsPath = os.path.join(
-        os.environ["AZURE_EXTENSION_DIR"], 'src', args.extension_name)
-    print("here extension is " + str(extensionsPath))
-    if os.path.isdir(extensionsPath):
-        os.chdir(extensionsPath)
+    config = Config(os.path.join(
+        os.environ[cli.AZ_CONFIG_DIR], "config"))
+    extensions_path = os.path.join(
+        config[cli.EXT_SECTION][cli.AZ_DEV_SRC], 'src', args.extension_name)
+    print("here extension is " + str(extensions_path))
+    if os.path.isdir(extensions_path):
+        os.chdir(extensions_path)
         subprocess.call(cli.INSTALL_EXT_CMD, shell=True)
     else:
         raise RuntimeError(args.extension_name + " doest not exist")
@@ -139,15 +144,15 @@ def main():
     parserSetup.add_argument(
         "path", type=str, help="Path to cli-extensions repo")
     parserSetup.add_argument('-cli', '--cli-path',
-                             type=str, help="Path to cli repo")
+                             type=str, help="Path to cli repo which will be installed")
     parserSetup.add_argument('-s', '--set-evn', type=str, help="Will " +
                              "create a virtual enviroment with the given evn name")
-    parserSubGroup = parserSetup.add_mutually_exclusive_group(required=True)
+    parserSubGroup = parserSetup.add_mutually_exclusive_group(required=False)
     parserSubGroup.add_argument('-c', '--copy', action='store_true', help="copy entire global" +
-                             " .azure diretory to the newly created virtual enviroment .azure direcotry" +
-                             " if it exist")
+                                " .azure diretory to the newly created virtual enviroment .azure direcotry" +
+                                " if it exist")
     parserSubGroup.add_argument('-g', '--use-global', action='store_true',
-                             help="will use the default global system .azure config")
+                                help="will use the default global system .azure config")
     parserSetup.set_defaults(func=setupConfig)
 
     # test parser
