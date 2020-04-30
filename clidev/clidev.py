@@ -6,13 +6,14 @@ import argparse
 from clidev import utils
 from clidev.config import Config
 import clidev as cli
+import shlex
 
 
 def setupConfig(args):
 
     if args.set_evn:
-        subprocess.call(cli.VENV_CMD + args.set_evn,
-                        shell=True)  # windows only for now
+        subprocess.call(shlex.split(cli.VENV_CMD + args.set_evn),
+                        shell=False)  
         azure_config_path = os.path.join(os.path.abspath(os.getcwd()),
                                          args.set_evn)
     elif os.environ.get(cli.VIRTUAL_ENV):
@@ -64,6 +65,9 @@ def setupConfig(args):
     file = open(activate_path, 'w')
     file.write(content)
     file.close()
+    
+    if args.cli_path:
+        utils.install_cli(os.path.abspath(args.cli_path), azure_config_path)
 
     print("\n======================================================================")
     print("The setup was successful. Please run or re-run the virtual\n" +
@@ -86,6 +90,7 @@ def setupTestEnv(args):
         raise RuntimeError(
             "no extension section or dev_sources specified in the config")
     runTest(args.test, args.live, args.options, args.all, args.clean, config)
+
 
 
 def runTest(test_to_run, live, py_args, all, clean, config):
