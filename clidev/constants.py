@@ -1,3 +1,5 @@
+import sys
+
 CONFIG_NAME = 'config'
 ACTIVATE_PS = 'Activate.ps1'
 PS1_VENV_SET = '$env:VIRTUAL_ENV'
@@ -14,3 +16,5 @@ REST_SPEC_SECTION = 'restspec'
 EVN_AZ_CONFIG = '$env:AZURE_CONFIG_DIR'
 AZEX_PREFIX = 'azext_'
 INSTALL_EXT_CMD = 'pip install -e .'
+PIP_E_CMD = 'pip install -e '
+IS_WINDOWS = sys.platform.lower() in ['windows', 'win32']
