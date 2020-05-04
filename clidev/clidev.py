@@ -50,30 +50,14 @@ def setupConfig(args):
             cli.AZ_DEV_SRC: os.path.abspath(args.cli_path)}
     config.write()
 
-    # only for powershell for now
-    activate_path = os.path.join(azure_config_path, cli.SCRIPTS,
-                                 cli.ACTIVATE_PS)
-    content = open(activate_path, "r").read()
-    idx = content.find(cli.PS1_VENV_SET)
-    if idx < 0:
-        raise RuntimeError("hmm, it looks like " + cli.ACTIVATE_PS + " does"
-                           " not set the virutal enviroment variable VIRTUAL_ENV")
-    if content.find(cli.EVN_AZ_CONFIG) < 0:
-        content = content[:idx] + cli.EVN_AZ_CONFIG + " = " + \
-            "\"" + dot_azure_config + "\"; " + \
-            content[idx:]
-    file = open(activate_path, 'w')
-    file.write(content)
-    file.close()
+    utils.edit_activate(azure_config_path, dot_azure_config)
     
     if args.cli_path:
         utils.install_cli(os.path.abspath(args.cli_path), azure_config_path)
 
     print("\n======================================================================")
     print("The setup was successful. Please run or re-run the virtual\n" +
-          "environment activation script (either activate or activate.ps1)\n" +
-          "Note, in future console windows you only\n" +
-          "need to run the activate script and not setup again.")
+          "environment activation script (either activate or activate.ps1)\n")
     print("======================================================================\n")
 
 
