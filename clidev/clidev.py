@@ -124,6 +124,34 @@ def runTest(test_to_run, live, py_args, all, clean, config):
                  for file in recording_files if file.endswith(".yaml")]
 
 
+def genExtension(args):
+
+    utils.validateEnv()
+
+    # install autorest
+    subprocess.check_output('npm install -g autorest', shell=True)
+    # update autorest core
+    subprocess.check_output('autorest --latest', shell=True)
+    
+    config = Config(os.path.join(
+        os.environ[cli.AZ_CONFIG_DIR], "config"))
+    extensions_repo_path = os.path.join(config[cli.EXT_SECTION][cli.AZ_DEV_SRC])
+    swagger_path = os.path.abspath(args.swagger_folder_path)
+    print("-----------------------")
+    print("extensions repo path " + str(extensions_repo_path))
+    print("swagger folder path " + str(swagger_path))
+    if not os.path.isdir(extensions_repo_path):
+        raise RuntimeError(args.extension_name + " does not exist")
+    if not os.path.isdir(swagger_path):
+        raise RuntimeError(swagger_path + " does not exist")
+    print("-----------------------")
+    print("start generating extension " + str(args.extension_name))
+    new_Path = os.path.join(swagger_path, 'readme.md')
+    cmd = 'autorest --az --azure-cli-extension-folder=' + str(extensions_repo_path) + ' ' + new_Path
+    # print("cmd: " + str(cmd))
+    subprocess.call(cmd, shell=True)
+
+
 def addExtension(args):
     utils.validateEnv()
     config = Config(os.path.join(
@@ -173,6 +201,12 @@ def main():
                        help='Run all cli-extensions tests')
     group.add_argument('-t', '--test', nargs='+', help='List of test to run')
     parserTest.set_defaults(func=setupTestEnv)
+
+    # generate extension parser
+    parserGenExtension = subparsers.add_parser('generate', aliases=['g'], help='generate an extension')
+    parserGenExtension.add_argument('extension_name', type=str, help='Extension name')
+    parserGenExtension.add_argument('swagger_folder_path', type=str, help='Path to rest-api specs readme.md file')
+    parserGenExtension.set_defaults(func=genExtension)
 
     # add extension parser
     parserExtensions = subparsers.add_parser(
