@@ -13,7 +13,7 @@ def setupConfig(args):
 
     if args.set_evn:
         subprocess.call(shlex.split(cli.VENV_CMD + args.set_evn),
-                        shell=False)  
+                        shell=False)
         azure_config_path = os.path.join(os.path.abspath(os.getcwd()),
                                          args.set_evn)
     elif os.environ.get(cli.VIRTUAL_ENV):
@@ -51,7 +51,7 @@ def setupConfig(args):
     config.write()
 
     utils.edit_activate(azure_config_path, dot_azure_config)
-    
+
     if args.cli_path:
         utils.install_cli(os.path.abspath(args.cli_path), azure_config_path)
 
@@ -108,6 +108,32 @@ def runTest(test_to_run, live, py_args, all, clean, config):
                  for file in recording_files if file.endswith(".yaml")]
 
 
+def genExtension(args):
+    utils.validateEnv()
+
+    # construct and validate cli-extensions repo path and swagger readme file path
+    config = Config(os.path.join(os.environ[cli.AZ_CONFIG_DIR], "config"))
+    extensions_repo_path = os.path.join(config[cli.EXT_SECTION][cli.AZ_DEV_SRC])
+    swagger_repo_path = os.path.abspath(args.swagger_repo_path)
+    swagger_readme_file_path = os.path.join(swagger_repo_path, 'specification', args.extension_name, 'resource-manager')
+    print("\n======================================================================")
+    print("cli-extensions repo path:\n" + str(extensions_repo_path))
+    print("RP's readme file path in azure-rest-api-specs:\n" + str(swagger_readme_file_path))
+    if not os.path.isdir(extensions_repo_path):
+        raise RuntimeError(args.extension_name + " does not exist")
+    if not os.path.isdir(swagger_readme_file_path):
+        raise RuntimeError(swagger_readme_file_path + " does not exist")
+    print("======================================================================\n")
+    
+    print("start generating extension " + str(args.extension_name))
+    # install autorest
+    subprocess.check_output('npm install -g autorest', shell=True)
+    # update autorest core
+    subprocess.check_output('autorest --latest', shell=True)
+    cmd = 'autorest --az --azure-cli-extension-folder=' + str(extensions_repo_path) + ' ' + str(swagger_readme_file_path)
+    subprocess.call(cmd, shell=True)
+
+
 def addExtension(args):
     utils.validateEnv()
     config = Config(os.path.join(
@@ -158,9 +184,15 @@ def main():
     group.add_argument('-t', '--test', nargs='+', help='List of test to run')
     parserTest.set_defaults(func=setupTestEnv)
 
+    # generate extension parser
+    parserGenExtension = subparsers.add_parser('generate', aliases=['g'], help='generate an extension')
+    parserGenExtension.add_argument('extension_name', type=str, help='Extension name')
+    parserGenExtension.add_argument('swagger_repo_path', type=str, help='Path to azure-rest-api-specs repo')
+    parserGenExtension.set_defaults(func=genExtension)
+
     # add extension parser
     parserExtensions = subparsers.add_parser(
-        'add', aliases=['t'], help='add an extensions')
+        'add', aliases=['a'], help='add an extensions')
     parserExtensions.add_argument(
         "extension_name", type=str, help="Extension name")
     parserExtensions.set_defaults(func=addExtension)
