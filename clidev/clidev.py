@@ -67,14 +67,13 @@ def setupTestEnv(args):
     # pytest commands or use a default set of pytest commands
     # it will also clean up the test enviroment unless the user specifies
     # otherwise
-    utils.validateEnv()
+    utils.validate_env()
     config = Config(os.path.join(
         os.environ[cli.AZ_CONFIG_DIR], "config"))
     if cli.EXT_SECTION not in config or cli.AZ_DEV_SRC not in config[cli.EXT_SECTION]:
         raise RuntimeError(
             "no extension section or dev_sources specified in the config")
     runTest(args.test, args.live, args.options, args.all, args.clean, config)
-
 
 
 def runTest(test_to_run, live, py_args, all, clean, config):
@@ -108,34 +107,38 @@ def runTest(test_to_run, live, py_args, all, clean, config):
                  for file in recording_files if file.endswith(".yaml")]
 
 
-def genExtension(args):
-    utils.validateEnv()
+def gen_extension(args):
+    utils.validate_env()
 
     # construct and validate cli-extensions repo path and swagger readme file path
     config = Config(os.path.join(os.environ[cli.AZ_CONFIG_DIR], "config"))
-    extensions_repo_path = os.path.join(config[cli.EXT_SECTION][cli.AZ_DEV_SRC])
+    extensions_repo_path = os.path.join(
+        config[cli.EXT_SECTION][cli.AZ_DEV_SRC])
     swagger_repo_path = os.path.abspath(args.swagger_repo_path)
-    swagger_readme_file_path = os.path.join(swagger_repo_path, 'specification', args.extension_name, 'resource-manager')
+    swagger_readme_file_path = os.path.join(
+        swagger_repo_path, 'specification', args.extension_name, 'resource-manager')
     print("\n======================================================================")
     print("cli-extensions repo path:\n" + str(extensions_repo_path))
-    print("RP's readme file path in azure-rest-api-specs:\n" + str(swagger_readme_file_path))
+    print("RP's readme file path in azure-rest-api-specs:\n" +
+          str(swagger_readme_file_path))
     if not os.path.isdir(extensions_repo_path):
         raise RuntimeError(args.extension_name + " does not exist")
     if not os.path.isdir(swagger_readme_file_path):
         raise RuntimeError(swagger_readme_file_path + " does not exist")
     print("======================================================================\n")
-    
+
     print("start generating extension " + str(args.extension_name))
     # install autorest
     subprocess.check_output('npm install -g autorest', shell=True)
     # update autorest core
     subprocess.check_output('autorest --latest', shell=True)
-    cmd = 'autorest --az --azure-cli-extension-folder=' + str(extensions_repo_path) + ' ' + str(swagger_readme_file_path)
+    cmd = cli.AUTO_REST_CMD + \
+        str(extensions_repo_path) + ' ' + str(swagger_readme_file_path)
     subprocess.call(cmd, shell=True)
 
 
-def addExtension(args):
-    utils.validateEnv()
+def add_extension(args):
+    utils.validate_env()
     config = Config(os.path.join(
         os.environ[cli.AZ_CONFIG_DIR], "config"))
     extensions_path = os.path.join(
@@ -154,48 +157,51 @@ def main():
                                        description='valid subcommands',
                                        help='additional help')
     # setup parser
-    parserSetup = subparsers.add_parser(
+    parser_setup = subparsers.add_parser(
         'setup', aliases=['s'], help='setup help')
-    parserSetup.add_argument(
+    parser_setup.add_argument(
         "path", type=str, help="Path to cli-extensions repo")
-    parserSetup.add_argument('-cli', '--cli-path',
+    parser_setup.add_argument('-cli', '--cli-path',
                              type=str, help="Path to cli repo which will be installed")
-    parserSetup.add_argument('-s', '--set-evn', type=str, help="Will " +
+    parser_setup.add_argument('-s', '--set-evn', type=str, help="Will " +
                              "create a virtual enviroment with the given evn name")
-    parserSubGroup = parserSetup.add_mutually_exclusive_group(required=False)
-    parserSubGroup.add_argument('-c', '--copy', action='store_true', help="copy entire global" +
+    parser_subgroup = parser_setup.add_mutually_exclusive_group(required=False)
+    parser_subgroup.add_argument('-c', '--copy', action='store_true', help="copy entire global" +
                                 " .azure diretory to the newly created virtual enviroment .azure direcotry" +
                                 " if it exist")
-    parserSubGroup.add_argument('-g', '--use-global', action='store_true',
+    parser_subgroup.add_argument('-g', '--use-global', action='store_true',
                                 help="will use the default global system .azure config")
-    parserSetup.set_defaults(func=setupConfig)
+    parser_setup.set_defaults(func=setupConfig)
 
     # test parser
-    parserTest = subparsers.add_parser('test', aliases=['t'], help='test help')
-    parserTest.add_argument('--options', type=str, help="A string represention of pytest args surrounded by \"[]\"." +
+    parser_test = subparsers.add_parser('test', aliases=['t'], help='test help')
+    parser_test.add_argument('--options', type=str, help="A string represention of pytest args surrounded by \"[]\"." +
                             " Example: --options \"[-s -l --tb=auto]\"")
-    parserTest.add_argument(
+    parser_test.add_argument(
         '--live', action='store_true', help='Run test live')
-    parserTest.add_argument('--clean', action='store_true',
+    parser_test.add_argument('--clean', action='store_true',
                             help='Will clean up cache always if selected and will clean recordings if live is not selected.')
-    group = parserTest.add_mutually_exclusive_group(required=True)
+    group = parser_test.add_mutually_exclusive_group(required=True)
     group.add_argument('--all', action='store_true',
                        help='Run all cli-extensions tests')
     group.add_argument('-t', '--test', nargs='+', help='List of test to run')
-    parserTest.set_defaults(func=setupTestEnv)
+    parser_test.set_defaults(func=setupTestEnv)
 
     # generate extension parser
-    parserGenExtension = subparsers.add_parser('generate', aliases=['g'], help='generate an extension')
-    parserGenExtension.add_argument('extension_name', type=str, help='Extension name')
-    parserGenExtension.add_argument('swagger_repo_path', type=str, help='Path to azure-rest-api-specs repo')
-    parserGenExtension.set_defaults(func=genExtension)
+    parser_gen_extension = subparsers.add_parser(
+        'generate', aliases=['g'], help='generate an extension')
+    parser_gen_extension.add_argument(
+        'extension_name', type=str, help='Extension name')
+    parser_gen_extension.add_argument(
+        'swagger_repo_path', type=str, help='Path to azure-rest-api-specs repo')
+    parser_gen_extension.set_defaults(func=gen_extension)
 
     # add extension parser
-    parserExtensions = subparsers.add_parser(
+    parser_extensions = subparsers.add_parser(
         'add', aliases=['a'], help='add an extensions')
-    parserExtensions.add_argument(
+    parser_extensions.add_argument(
         "extension_name", type=str, help="Extension name")
-    parserExtensions.set_defaults(func=addExtension)
+    parser_extensions.set_defaults(func=add_extension)
 
     args = parser.parse_args()
     if not vars(args):

@@ -2,7 +2,7 @@ import clidev as cli
 import os
 import subprocess
 
-def validateEnv():
+def validate_env():
     if not os.environ.get(cli.VIRTUAL_ENV):
         raise RuntimeError("You are not running inside a virtual enviromet")
     if not os.environ.get(cli.AZ_CONFIG_DIR):

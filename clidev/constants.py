@@ -17,4 +17,5 @@ EVN_AZ_CONFIG = '$env:AZURE_CONFIG_DIR'
 AZEX_PREFIX = 'azext_'
 INSTALL_EXT_CMD = 'pip install -e .'
 PIP_E_CMD = 'pip install -e '
+AUTO_REST_CMD = 'autorest --az --azure-cli-extension-folder='
 IS_WINDOWS = sys.platform.lower() in ['windows', 'win32']
