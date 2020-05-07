@@ -9,7 +9,7 @@ import clidev as cli
 import shlex
 
 
-def setupConfig(args):
+def setup_config(args):
 
     if args.set_evn:
         subprocess.call(shlex.split(cli.VENV_CMD + args.set_evn),
@@ -61,7 +61,7 @@ def setupConfig(args):
     print("======================================================================\n")
 
 
-def setupTestEnv(args):
+def setup_test_env(args):
     # this will setup pytest for CLI extension to run
     # in a clean enviroment. It will allow the user to customize
     # pytest commands or use a default set of pytest commands
@@ -73,10 +73,10 @@ def setupTestEnv(args):
     if cli.EXT_SECTION not in config or cli.AZ_DEV_SRC not in config[cli.EXT_SECTION]:
         raise RuntimeError(
             "no extension section or dev_sources specified in the config")
-    runTest(args.test, args.live, args.options, args.all, args.clean, config)
+    run_test(args.test, args.live, args.options, args.all, args.clean, config)
 
 
-def runTest(test_to_run, live, py_args, all, clean, config):
+def run_test(test_to_run, live, py_args, all, clean, config):
 
     if live:
         os.environ['AZURE_TEST_RUN_LIVE'] = 'True'
@@ -108,8 +108,8 @@ def runTest(test_to_run, live, py_args, all, clean, config):
 
 
 def gen_extension(args):
+    
     utils.validate_env()
-
     # construct and validate cli-extensions repo path and swagger readme file path
     config = Config(os.path.join(os.environ[cli.AZ_CONFIG_DIR], "config"))
     extensions_repo_path = os.path.join(
@@ -171,7 +171,7 @@ def main():
                                 " if it exist")
     parser_subgroup.add_argument('-g', '--use-global', action='store_true',
                                 help="will use the default global system .azure config")
-    parser_setup.set_defaults(func=setupConfig)
+    parser_setup.set_defaults(func=setup_config)
 
     # test parser
     parser_test = subparsers.add_parser('test', aliases=['t'], help='test help')
@@ -185,7 +185,7 @@ def main():
     group.add_argument('--all', action='store_true',
                        help='Run all cli-extensions tests')
     group.add_argument('-t', '--test', nargs='+', help='List of test to run')
-    parser_test.set_defaults(func=setupTestEnv)
+    parser_test.set_defaults(func=setup_test_env)
 
     # generate extension parser
     parser_gen_extension = subparsers.add_parser(
