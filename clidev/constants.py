@@ -19,3 +19,7 @@ INSTALL_EXT_CMD = 'pip install -e .'
 PIP_E_CMD = 'pip install -e '
 AUTO_REST_CMD = 'autorest --az --azure-cli-extension-folder='
 IS_WINDOWS = sys.platform.lower() in ['windows', 'win32']
+UN_BIN = 'bin'
+UN_ACTIVATE = 'activate'
+UN_EXPORT = 'export'
+BAT_ACTIVATE = 'activate.bat'

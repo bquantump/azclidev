@@ -2,6 +2,7 @@ import clidev as cli
 import os
 import subprocess
 
+
 def validate_env():
     if not os.environ.get(cli.VIRTUAL_ENV):
         raise RuntimeError("You are not running inside a virtual enviromet")
@@ -12,8 +13,40 @@ def validate_env():
         raise RuntimeError(
             "The Azure config file does not exist. please rerun setup")
 
+
 def edit_activate(azure_config_path, dot_azure_config):
-    ## windows only for now, will check linux later
+    if cli.IS_WINDOWS:
+        ps1_edit(azure_config_path, dot_azure_config)
+        bat_edit(azure_config_path, dot_azure_config)
+    else:
+        unix_edit(azure_config_path, dot_azure_config)
+
+
+def unix_edit(azure_config_path, dot_azure_config):
+    activate_path = os.path.join(azure_config_path, cli.UN_BIN,
+                                 cli.UN_ACTIVATE)
+    content = open(activate_path, "r").readlines()
+    
+    # check if already ran setup before
+    if cli.AZ_CONFIG_DIR not in content[0]:
+        content = [cli.AZ_CONFIG_DIR + '=' + dot_azure_config,
+                cli.UN_EXPORT + ' ' + cli.AZ_CONFIG_DIR] + content
+        with open(activate_path, "w") as file:
+            file.writelines(content)
+
+
+def bat_edit(azure_config_path, dot_azure_config):
+    activate_path = os.path.join(azure_config_path, cli.SCRIPTS,
+                                 cli.BAT_ACTIVATE)
+    content = open(activate_path, "r").readlines()
+    if cli.AZ_CONFIG_DIR not in content[1]:
+        content = content[0:1] + ['set ' + cli.AZ_CONFIG_DIR +
+                                '=' + dot_azure_config] + content[1::]
+        with open(activate_path, "w") as file:
+            file.writelines(content)
+
+
+def ps1_edit(azure_config_path, dot_azure_config):
     activate_path = os.path.join(azure_config_path, cli.SCRIPTS,
                                  cli.ACTIVATE_PS)
     content = open(activate_path, "r").read()
@@ -25,18 +58,25 @@ def edit_activate(azure_config_path, dot_azure_config):
         content = content[:idx] + cli.EVN_AZ_CONFIG + " = " + \
             "\"" + dot_azure_config + "\"; " + \
             content[idx:]
-    file = open(activate_path, 'w')
-    file.write(content)
-    file.close()
-        
+    with open(activate_path, "w") as file:
+        file.write(content)
+
+
 def install_cli(cli_path, venv_path):
     venv_path = os.environ[cli.VIRTUAL_ENV] = venv_path
     src_path = os.path.join(cli_path, 'src')
-    site_pkgs = os.path.join(venv_path, 'Lib', 'site-packages')
-    activate_path = os.path.join(venv_path, 'Scripts', 'activate')
-    subprocess.call(activate_path + ' && ' + 'pip install azure-common', shell=True)
-    subprocess.call(activate_path + ' && ' + cli.PIP_E_CMD + os.path.join(src_path, 'azure-cli-nspkg'), shell=True)
-    subprocess.call(activate_path + ' && ' + cli.PIP_E_CMD + os.path.join(src_path, 'azure-cli-telemetry'), shell=True)
-    subprocess.call(activate_path + ' && ' + cli.PIP_E_CMD + os.path.join(src_path, 'azure-cli-core'), shell=True)
-    subprocess.call(activate_path + ' && ' + cli.PIP_E_CMD + os.path.join(src_path, 'azure-cli'), shell=True)
-    subprocess.call(activate_path + ' && ' + cli.PIP_E_CMD + os.path.join(src_path, 'azure-cli-testsdk'), shell=True)
+    activate_path = os.path.join(venv_path, 'Scripts', 'activate') if cli.IS_WINDOWS else 'source ' + os.path.join(
+        venv_path, cli.UN_BIN, cli.UN_ACTIVATE)
+    delimiter = ' && ' if cli.IS_WINDOWS else '; '
+    subprocess.call(activate_path + delimiter +
+                    'pip install azure-common', shell=True)
+    subprocess.call(activate_path + delimiter + cli.PIP_E_CMD +
+                    os.path.join(src_path, 'azure-cli-nspkg'), shell=True)
+    subprocess.call(activate_path + delimiter + cli.PIP_E_CMD +
+                    os.path.join(src_path, 'azure-cli-telemetry'), shell=True)
+    subprocess.call(activate_path + delimiter + cli.PIP_E_CMD +
+                    os.path.join(src_path, 'azure-cli-core'), shell=True)
+    subprocess.call(activate_path + delimiter + cli.PIP_E_CMD +
+                    os.path.join(src_path, 'azure-cli'), shell=True)
+    subprocess.call(activate_path + delimiter + cli.PIP_E_CMD +
+                    os.path.join(src_path, 'azure-cli-testsdk'), shell=True)
