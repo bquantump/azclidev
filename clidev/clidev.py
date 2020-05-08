@@ -12,7 +12,7 @@ import shlex
 def setup_config(args):
 
     if args.set_evn:
-        subprocess.call(shlex.split(cli.VENV_CMD + args.set_evn),
+        subprocess.call(shlex.split((cli.VENV_CMD if cli.IS_WINDOWS else cli.VENV_CMD3) + args.set_evn),
                         shell=False)
         azure_config_path = os.path.join(os.path.abspath(os.getcwd()),
                                          args.set_evn)
@@ -108,7 +108,7 @@ def run_test(test_to_run, live, py_args, all, clean, config):
 
 
 def gen_extension(args):
-    
+
     utils.validate_env()
     # construct and validate cli-extensions repo path and swagger readme file path
     config = Config(os.path.join(os.environ[cli.AZ_CONFIG_DIR], "config"))
@@ -162,25 +162,26 @@ def main():
     parser_setup.add_argument(
         "path", type=str, help="Path to cli-extensions repo")
     parser_setup.add_argument('-cli', '--cli-path',
-                             type=str, help="Path to cli repo which will be installed")
+                              type=str, help="Path to cli repo which will be installed")
     parser_setup.add_argument('-s', '--set-evn', type=str, help="Will " +
-                             "create a virtual enviroment with the given evn name")
+                              "create a virtual enviroment with the given evn name")
     parser_subgroup = parser_setup.add_mutually_exclusive_group(required=False)
     parser_subgroup.add_argument('-c', '--copy', action='store_true', help="copy entire global" +
-                                " .azure diretory to the newly created virtual enviroment .azure direcotry" +
-                                " if it exist")
+                                 " .azure diretory to the newly created virtual enviroment .azure direcotry" +
+                                 " if it exist")
     parser_subgroup.add_argument('-g', '--use-global', action='store_true',
-                                help="will use the default global system .azure config")
+                                 help="will use the default global system .azure config")
     parser_setup.set_defaults(func=setup_config)
 
     # test parser
-    parser_test = subparsers.add_parser('test', aliases=['t'], help='test help')
+    parser_test = subparsers.add_parser(
+        'test', aliases=['t'], help='test help')
     parser_test.add_argument('--options', type=str, help="A string represention of pytest args surrounded by \"[]\"." +
-                            " Example: --options \"[-s -l --tb=auto]\"")
+                             " Example: --options \"[-s -l --tb=auto]\"")
     parser_test.add_argument(
         '--live', action='store_true', help='Run test live')
     parser_test.add_argument('--clean', action='store_true',
-                            help='Will clean up cache always if selected and will clean recordings if live is not selected.')
+                             help='Will clean up cache always if selected and will clean recordings if live is not selected.')
     group = parser_test.add_mutually_exclusive_group(required=True)
     group.add_argument('--all', action='store_true',
                        help='Run all cli-extensions tests')

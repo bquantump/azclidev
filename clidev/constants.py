@@ -6,6 +6,7 @@ PS1_VENV_SET = '$env:VIRTUAL_ENV'
 SCRIPTS = 'Scripts'
 VIRTUAL_ENV = 'VIRTUAL_ENV'
 VENV_CMD = 'python -m venv --system-site-packages '
+VENV_CMD3 = 'python3 -m venv --system-site-packages '
 AZ_CONFIG_DIR = 'AZURE_CONFIG_DIR'
 AZ_DEV_SRC = 'dev_sources'
 AZ_CLOUD = {'name': 'AzureCloud'}
