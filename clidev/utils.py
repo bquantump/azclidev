@@ -65,7 +65,7 @@ def ps1_edit(azure_config_path, dot_azure_config):
 def install_cli(cli_path, venv_path):
     venv_path = os.environ[cli.VIRTUAL_ENV] = venv_path
     src_path = os.path.join(cli_path, 'src')
-    activate_path = os.path.join(venv_path, 'Scripts', 'activate') if cli.IS_WINDOWS else '.\ ' + os.path.join(
+    activate_path = os.path.join(venv_path, 'Scripts', 'activate') if cli.IS_WINDOWS else 'source ' + os.path.join(
         venv_path, cli.UN_BIN, cli.UN_ACTIVATE)
     delimiter = ' && ' if cli.IS_WINDOWS else '; '
     executable = None if cli.IS_WINDOWS else cli.BASH_EXE
