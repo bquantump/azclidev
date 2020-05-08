@@ -71,7 +71,7 @@ def install_cli(cli_path, venv_path):
     executable = None if cli.IS_WINDOWS else cli.BASH_EXE
     print("\nactivate path is " + str(activate_path))
     subprocess.call(activate_path + delimiter +
-                    'pip install azure-common', shell=True, executable=None)
+                    'pip install azure-common', shell=True, executable=executable)
     subprocess.call(activate_path + delimiter + cli.PIP_E_CMD +
                     os.path.join(src_path, 'azure-cli-nspkg'), shell=True, executable=executable)
     subprocess.call(activate_path + delimiter + cli.PIP_E_CMD +
