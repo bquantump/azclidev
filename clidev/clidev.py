@@ -94,8 +94,7 @@ def run_test(test_to_run, live, py_args, all, clean, config):
         cmd = ("python " + ('-B ' if clean else '') +
                "-m pytest {}").format(' '.join([testPath] + arguments))
         print("cmd being run is: " + str(cmd.split))
-        subprocess.call(cmd.split(), env=os.environ.copy(), shell=True,
-                        executable=None if cli.IS_WINDOWS else cli.BASH_EXE)
+        subprocess.call(cmd.split(), env=os.environ.copy(), shell=False)
         if not live and clean:
             recordings = os.path.join(testPath,
                                       cli.AZEX_PREFIX + i,
