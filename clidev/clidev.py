@@ -7,6 +7,7 @@ from clidev import utils
 from clidev.config import Config
 import clidev as cli
 import shlex
+import traceback
 
 
 def setup_config(args):
@@ -94,8 +95,16 @@ def run_test(test_to_run, live, py_args, all, clean, config):
         cmd = ("python " + ('-B ' if clean else '') +
                "-m pytest {}").format(' '.join([testPath] + arguments))
         print("cmd being run is: " + str(cmd.split()))
-        subprocess.call(cmd.split(), shell=cli.IS_WINDOWS)
-        if not live and clean:
+        failed = False
+        out = None
+        try:
+            out = subprocess.check_output(cmd.split(), shell=cli.IS_WINDOWS)
+            print(out.decode())
+        except subprocess.CalledProcessError as e:
+            failed = True
+            print(e.output.decode())
+            
+        if failed and clean:
             recordings = os.path.join(testPath,
                                       cli.AZEX_PREFIX + i,
                                       'tests',
