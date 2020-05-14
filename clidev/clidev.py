@@ -123,18 +123,28 @@ def gen_extension(args):
     config = Config(os.path.join(os.environ[cli.AZ_CONFIG_DIR], "config"))
     extensions_repo_path = os.path.join(
         config[cli.EXT_SECTION][cli.AZ_DEV_SRC])
-    swagger_repo_path = os.path.abspath(args.swagger_repo_path)
-    swagger_readme_file_path = os.path.join(
-        swagger_repo_path, 'specification', args.extension_name, 'resource-manager')
+    if args.local_swagger_repo:
+        swagger_repo_path = os.path.abspath(args.local_swagger_repo)
+    else:
+        venv_path = os.environ.get(cli.VIRTUAL_ENV)
+        os.chdir(venv_path)
+        subprocess.call(cli.GIT_CLONE_CMD + args.remote_swagger_repo, shell=True)
+        swagger_repo_path = os.path.abspath(os.path.join(venv_path, cli.SWAGGER_REPO_NAME))
+        os.chdir(cli.SWAGGER_REPO_NAME)
+        sparse_checkout_cmd = cli.GIT_SPARSE_CHECKOUT_CMD + 'specification/' + args.extension_name + '/resource-manager'
+        subprocess.call(sparse_checkout_cmd, shell=True)
+        os.chdir(venv_path)  
+    swagger_readme_file_path = os.path.join(swagger_repo_path, 'specification', args.extension_name, 'resource-manager')
     print("\n======================================================================")
     print("cli-extensions repo path:\n" + str(extensions_repo_path))
     print("RP's readme file path in azure-rest-api-specs:\n" +
-          str(swagger_readme_file_path))
+        str(swagger_readme_file_path))
     if not os.path.isdir(extensions_repo_path):
         raise RuntimeError(args.extension_name + " does not exist")
     if not os.path.isdir(swagger_readme_file_path):
         raise RuntimeError(swagger_readme_file_path + " does not exist")
     print("======================================================================\n")
+
 
     print("start generating extension " + str(args.extension_name))
     # install autorest
@@ -144,6 +154,10 @@ def gen_extension(args):
     cmd = cli.AUTO_REST_CMD + \
         str(extensions_repo_path) + ' ' + str(swagger_readme_file_path)
     subprocess.call(cmd, shell=True)
+
+    if args.remote_swagger_repo:
+        # remove the tmp azure-rest-api-specs folder
+        subprocess.call(['powershell.exe', 'rm -r ' + swagger_repo_path + ' -force'])
 
 
 def add_extension(args):
@@ -175,7 +189,7 @@ def main():
     parser_setup.add_argument('-s', '--set-evn', type=str, help="Will " +
                               "create a virtual enviroment with the given evn name")
     parser_subgroup = parser_setup.add_mutually_exclusive_group(required=False)
-    parser_subgroup.add_argument('-c', '--copy', action='store_true', help="copy entire global" +
+    parser_subgroup.add_argument('-c', '--copy', action='store_true', help="It will copy entire global" +
                                  " .azure diretory to the newly created virtual enviroment .azure direcotry" +
                                  " if it exist")
     parser_subgroup.add_argument('-g', '--use-global', action='store_true',
@@ -202,8 +216,11 @@ def main():
         'generate', aliases=['g'], help='generate an extension')
     parser_gen_extension.add_argument(
         'extension_name', type=str, help='Extension name')
-    parser_gen_extension.add_argument(
-        'swagger_repo_path', type=str, help='Path to azure-rest-api-specs repo')
+    parser_gen_sub_group=parser_gen_extension.add_mutually_exclusive_group(required=True)
+    parser_gen_sub_group.add_argument('-l',
+        '--local-swagger-repo', type=str, help='Path to local azure-rest-api-specs repo')
+    parser_gen_sub_group.add_argument('-r',
+        '--remote-swagger-repo', type=str, help='URL to GitHub azure-rest-api-specs repo')
     parser_gen_extension.set_defaults(func=gen_extension)
 
     # add extension parser
