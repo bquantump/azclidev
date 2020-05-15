@@ -128,10 +128,8 @@ def gen_extension(args):
     else:
         venv_path = os.environ.get(cli.VIRTUAL_ENV)
         os.chdir(venv_path)
-        if args.remote_swagger_repo:
-            subprocess.call(cli.GIT_CLONE_CMD + args.remote_swagger_repo, shell=True)
-        else:
-            subprocess.call(cli.GIT_CLONE_CMD + cli.GIT_SWAGGER_REPO_URL, shell=True)
+        url = args.remote_swagger_repo if args.remote_swagger_repo else cli.GIT_SWAGGER_REPO_URL
+        subprocess.call(cli.GIT_CLONE_CMD + url, shell=True)
         swagger_repo_path = os.path.abspath(os.path.join(venv_path, cli.SWAGGER_REPO_NAME))
         os.chdir(cli.SWAGGER_REPO_NAME)
         sparse_checkout_cmd = cli.GIT_SPARSE_CHECKOUT_CMD + 'specification/' + args.extension_name + '/resource-manager'
