@@ -179,10 +179,10 @@ def main():
     parser = argparse.ArgumentParser(prog='clidev')
     subparsers = parser.add_subparsers(title='subcommands',
                                        description='valid subcommands',
-                                       help='additional help')
+                                       help='Additional help')
     # setup parser
     parser_setup = subparsers.add_parser(
-        'setup', aliases=['s'], help='setup help')
+        'setup', aliases=['s'], help='Setup help')
     parser_setup.add_argument(
         "path", type=str, help="Path to cli-extensions repo")
     parser_setup.add_argument('-cli', '--cli-path',
@@ -190,11 +190,11 @@ def main():
     parser_setup.add_argument('-s', '--set-evn', type=str, help="Will " +
                               "create a virtual enviroment with the given evn name")
     parser_subgroup = parser_setup.add_mutually_exclusive_group(required=False)
-    parser_subgroup.add_argument('-c', '--copy', action='store_true', help="It will copy entire global" +
+    parser_subgroup.add_argument('-c', '--copy', action='store_true', help="Will copy entire global" +
                                  " .azure diretory to the newly created virtual enviroment .azure direcotry" +
                                  " if it exist")
     parser_subgroup.add_argument('-g', '--use-global', action='store_true',
-                                 help="will use the default global system .azure config")
+                                 help="Will use the default global system .azure config")
     parser_setup.set_defaults(func=setup_config)
 
     # test parser
@@ -214,7 +214,7 @@ def main():
 
     # generate extension parser
     parser_gen_extension = subparsers.add_parser(
-        'generate', aliases=['g'], help='generate an extension')
+        'generate', aliases=['g'], help='Generate an extension')
     parser_gen_extension.add_argument(
         'extension_name', type=str, help='Extension name')
     parser_gen_sub_group=parser_gen_extension.add_mutually_exclusive_group(required=False)
@@ -226,7 +226,7 @@ def main():
 
     # add extension parser
     parser_extensions = subparsers.add_parser(
-        'add', aliases=['a'], help='add an extensions')
+        'add', aliases=['a'], help='Add an extension')
     parser_extensions.add_argument(
         "extension_name", type=str, help="Extension name")
     parser_extensions.set_defaults(func=add_extension)
