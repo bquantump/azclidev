@@ -128,12 +128,15 @@ def gen_extension(args):
     else:
         venv_path = os.environ.get(cli.VIRTUAL_ENV)
         os.chdir(venv_path)
-        subprocess.call(cli.GIT_CLONE_CMD + args.remote_swagger_repo, shell=True)
+        if args.remote_swagger_repo:
+            subprocess.call(cli.GIT_CLONE_CMD + args.remote_swagger_repo, shell=True)
+        else:
+            subprocess.call(cli.GIT_CLONE_CMD + cli.GIT_SWAGGER_REPO_URL, shell=True)
         swagger_repo_path = os.path.abspath(os.path.join(venv_path, cli.SWAGGER_REPO_NAME))
         os.chdir(cli.SWAGGER_REPO_NAME)
         sparse_checkout_cmd = cli.GIT_SPARSE_CHECKOUT_CMD + 'specification/' + args.extension_name + '/resource-manager'
         subprocess.call(sparse_checkout_cmd, shell=True)
-        os.chdir(venv_path)  
+        os.chdir(venv_path)
     swagger_readme_file_path = os.path.join(swagger_repo_path, 'specification', args.extension_name, 'resource-manager')
     print("\n======================================================================")
     print("cli-extensions repo path:\n" + str(extensions_repo_path))
@@ -155,7 +158,7 @@ def gen_extension(args):
         str(extensions_repo_path) + ' ' + str(swagger_readme_file_path)
     subprocess.call(cmd, shell=True)
 
-    if args.remote_swagger_repo:
+    if not args.local_swagger_repo:
         # remove the tmp azure-rest-api-specs folder
         subprocess.call(['powershell.exe', 'rm -r ' + swagger_repo_path + ' -force'])
 
@@ -216,7 +219,7 @@ def main():
         'generate', aliases=['g'], help='generate an extension')
     parser_gen_extension.add_argument(
         'extension_name', type=str, help='Extension name')
-    parser_gen_sub_group=parser_gen_extension.add_mutually_exclusive_group(required=True)
+    parser_gen_sub_group=parser_gen_extension.add_mutually_exclusive_group(required=False)
     parser_gen_sub_group.add_argument('-l',
         '--local-swagger-repo', type=str, help='Path to local azure-rest-api-specs repo')
     parser_gen_sub_group.add_argument('-r',
